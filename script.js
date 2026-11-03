@@ -2898,3 +2898,113 @@ hostStartGame = async function() {
     }
     await origHostStart();
 };
+// =====================================================
+// HOVER TOOLTIP (CENY, CZYNSZE, DOMKI/HOTEL) + SUWAK MAKS. DOMKÓW
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+// Odczyt suwaka maksymalnej liczby domków z DOM
+const origReadSettings = readSettingsFromDOM;
+readSettingsFromDOM = function() {
+    const s = origReadSettings();
+    s.maxHousesBeforeHotel = parseInt(document.getElementById("rule-max-houses")?.value) || 4;
+    return s;
+};
+
+const origApplySettings = applySettingsToDOM;
+applySettingsToDOM = function(s) {
+    origApplySettings(s);
+    if (s && s.maxHousesBeforeHotel) {
+        const sel = document.getElementById("rule-max-houses");
+        if (sel) sel.value = s.maxHousesBeforeHotel;
+    }
+};
+
+// Generowanie HTML dla dymku informacyjnego po najechaniu na pole
+function getTileTooltipHTML(tile, propState) {
+    if (tile.type !== "prop" && tile.type !== "station" && tile.type !== "utility") {
+        return `<div class="tooltip-title">${tile.name}</div><div>Pole specjalne</div>`;
+    }
+
+    const price = tile.price || 100;
+    const baseRent = tile.rent || 20;
+    const houseCost = tile.house || 50;
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+
+    let html = `<div class="tooltip-title">${tile.name}</div>`;
+    html += `<div class="tooltip-row"><span>Cena zakupu:</span><strong>${price}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>Cena domku:</span><strong>${houseCost}$</strong></div>`;
+    html += `<div class="tooltip-row" style="border-top:1px solid #3b3354; margin-top:3px; padding-top:3px;"><span>Czynsz bazowy:</span><strong>${baseRent}$</strong></div>`;
+
+    // Cennik czynszu za domki
+    for (let h = 1; h <= maxH; h++) {
+        const r = baseRent * Math.pow(2.2, h);
+        html += `<div class="tooltip-row"><span>${h} ${h === 1 ? 'domek' : 'domki'}:</span><strong>${Math.floor(r)}$</strong></div>`;
+    }
+    // Czynsz za hotel
+    const hotelRent = baseRent * Math.pow(2.2, maxH + 1.5);
+    html += `<div class="tooltip-row" style="color:#fde047;"><span>Hotel (👑):</span><strong>${Math.floor(hotelRent)}$</strong></div>`;
+
+    if (propState) {
+        const owner = roomState.players[propState.owner];
+        const hCnt = propState.houses || 0;
+        const statusStr = hCnt > maxH ? "Hotel 🏨" : (hCnt === 0 ? "Brak zabudowy" : `${hCnt} domki 🏠`);
+        html += `<div style="margin-top:4px; border-top:1px dashed #475569; padding-top:3px; color:${owner?.color || '#fff'}">Właściciel: ${owner?.nick || 'Bank'} (${statusStr})</div>`;
+    }
+
+    return html;
+}
+
+// Nadpisujemy rysowanie kafelków, żeby dodać tooltip oraz wyraźne domki/hotele na mapie
+const prevRenderForTooltip = renderCleanScreen;
+renderCleanScreen = function() {
+    prevRenderForTooltip();
+    if (!roomState) return;
+
+    const boardEl = document.getElementById("monopoly-board");
+    if (!boardEl) return;
+
+    const props = roomState.props || {};
+    const boardData = getCurrentBoard();
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+    const tiles = boardEl.querySelectorAll(".m-tile");
+
+    tiles.forEach((tileEl, idx) => {
+        const tile = boardData[idx];
+        const pState = props[idx];
+        const houses = pState ? (pState.houses || 0) : 0;
+
+        // Renderowanie domków lub hotelu na pasku koloru kafelka
+        const barEl = tileEl.querySelector(".tile-bar");
+        if (barEl && tile.color) {
+            if (houses > maxH) {
+                barEl.innerText = "🏨 HOTEL";
+                barEl.style.background = "#dc2626";
+            } else if (houses > 0) {
+                barEl.innerText = "🏠".repeat(houses);
+            } else {
+                barEl.innerText = "";
+            }
+        }
+
+        // Dodanie dymku tooltipa, jeśli go jeszcze nie ma
+        let tooltipEl = tileEl.querySelector(".tile-tooltip");
+        if (!tooltipEl) {
+            tooltipEl = document.createElement("div");
+            tooltipEl.className = "tile-tooltip";
+            tileEl.appendChild(tooltipEl);
+        }
+        tooltipEl.innerHTML = getTileTooltipHTML(tile, pState);
+    });
+};
+
+renderRichupScreen = renderCleanScreen;
+
+// Zwiększenie limitu domków w logice budowania do wartości z suwaka
+const oldCanBuild = canBuildHouseHere;
+canBuildHouseHere = function(playerId, targetIdx, boardData) {
+    const pState = roomState.props[targetIdx];
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+    if (pState && (pState.houses || 0) > maxH) return false; // Nie można budować powyżej hotelu
+    return oldCanBuild(playerId, targetIdx, boardData);
+};
