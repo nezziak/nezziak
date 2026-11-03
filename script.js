@@ -3008,3 +3008,195 @@ canBuildHouseHere = function(playerId, targetIdx, boardData) {
     if (pState && (pState.houses || 0) > maxH) return false; // Nie można budować powyżej hotelu
     return oldCanBuild(playerId, targetIdx, boardData);
 };
+
+// Zbalansowany tooltip po najechaniu myszką (wyświetla realne, oryginalne stawki)
+getTileTooltipHTML = function(tile, propState) {
+    if (tile.type !== "prop" && tile.type !== "station" && tile.type !== "utility") {
+        return `<div class="tooltip-title">${tile.name}</div><div>Pole specjalne</div>`;
+    }
+
+    const price = tile.price || 100;
+    const baseRent = tile.rent || 10;
+    const houseCost = tile.house || 50;
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+
+    let html = `<div class="tooltip-title">${tile.name}</div>`;
+    html += `<div class="tooltip-row"><span>Cena zakupu:</span><strong>${price}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>Cena domku:</span><strong>${houseCost}$</strong></div>`;
+    html += `<div class="tooltip-row" style="border-top:1px solid #3b3354; margin-top:3px; padding-top:3px;"><span>Czynsz bazowy:</span><strong>${baseRent}$</strong></div>`;
+
+    for (let h = 1; h <= maxH; h++) {
+        const r = baseRent * RENT_MULTIPLIERS[h];
+        html += `<div class="tooltip-row"><span>${h} ${h === 1 ? 'domek' : 'domki'}:</span><strong>${r}$</strong></div>`;
+    }
+    const hotelRent = baseRent * RENT_MULTIPLIERS[maxH + 1];
+    html += `<div class="tooltip-row" style="color:#fde047;"><span>Hotel (👑):</span><strong>${hotelRent}$</strong></div>`;
+
+    if (propState) {
+        const owner = roomState.players[propState.owner];
+        const hCnt = propState.houses || 0;
+        const statusStr = hCnt > maxH ? "Hotel 🏨" : (hCnt === 0 ? "Brak zabudowy" : `${hCnt} domki 🏠`);
+        html += `<div style="margin-top:4px; border-top:1px dashed #475569; padding-top:3px; color:${owner?.color || '#fff'}">Właściciel: ${owner?.nick || ' Bank'} (${statusStr})</div>`;
+    }
+
+    return html;
+};
+
+// =====================================================
+// DOKŁADNY BALANS ZGODNY Z WYTYCZNYMI + ORYGINALNE NAZWY RSL
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+const EXACT_BALANCED_MAP_40 = [
+    { name: "START", type: "start", icon: "🏁" },
+    // Brązowe / Fioletowe (2 pola)
+    { name: "Orzegów", type: "prop", price: 60, rentSet: [2, 10, 30, 90, 160, 250], house: 50, color: "#854d0e", group: 1 },
+    { name: "Skarb Śląski", type: "chest", icon: "📦" },
+    { name: "Godula", type: "prop", price: 60, rentSet: [4, 20, 60, 180, 320, 450], house: 50, color: "#854d0e", group: 1 },
+    { name: "Podatek dochodowy", type: "tax", amount: 200, icon: "💸" },
+    // Stacja 1
+    { name: "Dworzec Chebzie", type: "station", price: 200, color: "#38bdf8", group: 9, icon: "✈️" },
+    // Jasnoniebieskie (3 pola)
+    { name: "Chebzie", type: "prop", price: 100, rentSet: [6, 30, 90, 270, 400, 550], house: 50, color: "#0ea5e9", group: 2 },
+    { name: "Niespodzianka", type: "chance", icon: "❓" },
+    { name: "Ruda Południowa", type: "prop", price: 100, rentSet: [6, 30, 90, 270, 400, 550], house: 50, color: "#0ea5e9", group: 2 },
+    { name: "Ruda 1", type: "prop", price: 120, rentSet: [8, 40, 100, 300, 450, 600], house: 50, color: "#0ea5e9", group: 2 },
+    
+    { name: "Więzienie (Izba)", type: "jail", icon: "⛓️" },
+    // Różowe (3 pola)
+    { name: "Kuźnica", type: "prop", price: 140, rentSet: [10, 50, 150, 450, 625, 750], house: 100, color: "#ec4899", group: 3 },
+    { name: "Elektrownia RSL", type: "utility", price: 150, color: "#94a3b8", group: 10, icon: "⚡" },
+    { name: "Czarny Las", type: "prop", price: 140, rentSet: [10, 50, 150, 450, 625, 750], house: 100, color: "#ec4899", group: 3 },
+    { name: "Bielszowice", type: "prop", price: 160, rentSet: [12, 60, 180, 500, 700, 900], house: 100, color: "#ec4899", group: 3 },
+    // Stacja 2
+    { name: "Lotnisko Muchowiec", type: "station", price: 200, color: "#38bdf8", group: 9, icon: "✈️" },
+    // Pomarańczowe (3 pola)
+    { name: "Kokota", type: "prop", price: 180, rentSet: [14, 70, 200, 550, 750, 950], house: 100, color: "#f97316", group: 4 },
+    { name: "Skarb Śląski", type: "chest", icon: "📦" },
+    { name: "Bykowina Targ", type: "prop", price: 180, rentSet: [14, 70, 200, 550, 750, 950], house: 100, color: "#f97316", group: 4 },
+    { name: "Bykowina", type: "prop", price: 200, rent: [16, 80, 220, 600, 800, 1000], house: 100, color: "#f97316", group: 4 },
+    
+    { name: "Wakacje (Burloch)", type: "parking", icon: "🏖️" },
+    // Czerwone (3 pola)
+    { name: "Wirek", type: "prop", price: 220, rentSet: [18, 90, 250, 700, 875, 1050], house: 150, color: "#ef4444", group: 5 },
+    { name: "Niespodzianka", type: "chance", icon: "❓" },
+    { name: "Targowisko Wirek", type: "prop", price: 220, rentSet: [18, 90, 250, 700, 875, 1050], house: 150, color: "#ef4444", group: 5 },
+    { name: "CH Plaza Ruda", type: "prop", price: 240, rentSet: [20, 100, 300, 750, 925, 1100], house: 150, color: "#ef4444", group: 5 },
+    // Stacja 3
+    { name: "Węzeł DTŚ Ruda", type: "station", price: 200, color: "#38bdf8", group: 9, icon: "✈️" },
+    // Żółte (3 pola)
+    { name: "Kochłowice Planty", type: "prop", price: 260, rentSet: [22, 110, 330, 800, 975, 1150], house: 150, color: "#eab308", group: 6 },
+    { name: "Kochłowice Rynek", type: "prop", price: 260, rentSet: [22, 110, 330, 800, 975, 1150], house: 150, color: "#eab308", group: 6 },
+    { name: "Wodociągi PWiK", type: "utility", price: 150, color: "#94a3b8", group: 10, icon: "💧" },
+    { name: "Radoszowy", type: "prop", price: 280, rentSet: [24, 120, 360, 850, 1025, 1200], house: 150, color: "#eab308", group: 6 },
+    
+    { name: "Idź do Więzienia!", type: "gotojail", icon: "🚔" },
+    // Zielone (3 pola)
+    { name: "Kłodnica", type: "prop", price: 300, rentSet: [26, 130, 390, 900, 1100, 1275], house: 200, color: "#22c55e", group: 7 },
+    { name: "Halemba Pętla", type: "prop", price: 300, rentSet: [26, 130, 390, 900, 1100, 1275], house: 200, color: "#22c55e", group: 7 },
+    { name: "Skarb Śląski", type: "chest", icon: "📦" },
+    { name: "Aquadrom Halemba", type: "prop", price: 320, rentSet: [28, 150, 450, 1000, 1200, 1400], house: 200, color: "#22c55e", group: 7 },
+    // Stacja 4
+    { name: "Autostrada A4", type: "station", price: 200, color: "#38bdf8", group: 9, icon: "✈️" },
+    { name: "Niespodzianka", type: "chance", icon: "❓" },
+    // Granatowe / Niebieskie (2 pola)
+    { name: "Fryna (Nowy Bytom)", type: "prop", price: 350, rentSet: [35, 175, 500, 1100, 1300, 1500], house: 200, color: "#3b82f6", group: 8 },
+    { name: "Podatek Luksusowy", type: "tax", amount: 100, icon: "💍" },
+    { name: "Nowy Bytom Ratusz", type: "prop", price: 400, rentSet: [50, 200, 600, 1400, 1700, 2000], house: 200, color: "#3b82f6", group: 8 }
+];
+
+MAP_40.length = 0;
+EXACT_BALANCED_MAP_40.forEach(t => MAP_40.push(t));
+
+// Obsługa obliczania czynszu dla stacji (samolotów), mediów (elektrownia/wodociągi) oraz domków/hoteli
+processLanding = function(player, tile, posIdx, boardData) {
+    if (!roomState.props) roomState.props = {};
+    const pState = roomState.props[posIdx];
+
+    if (pState && pState.owner !== player.id) {
+        const owner = roomState.players[pState.owner];
+        if (owner && !owner.bankrupt) {
+            if (roomState.settings.noPrisonRent && owner.inJail > 0) {
+                return `Właściciel w więzieniu – brak czynszu!`;
+            }
+
+            let finalRent = 0;
+
+            // 1. Stacje / Samoloty (4 stacje: 50, 150, 250, 400)
+            if (tile.type === "station") {
+                const stationIndices = boardData.map((t, i) => t.type === "station" ? i : -1).filter(i => i !== -1);
+                const ownerStationsCount = stationIndices.filter(i => roomState.props[i]?.owner === owner.id).length;
+                const stationTable = [0, 50, 150, 250, 400];
+                finalRent = stationTable[Math.min(ownerStationsCount, 4)] || 50;
+            } 
+            // 2. Media: Elektrownia / Wodociągi (1 sztuka = rzut x5, 2 sztuki = rzut x10)
+            else if (tile.type === "utility") {
+                const utilityIndices = boardData.map((t, i) => t.type === "utility" ? i : -1).filter(i => i !== -1);
+                const ownerUtilityCount = utilityIndices.filter(i => roomState.props[i]?.owner === owner.id).length;
+                const diceSum = (roomState.dice ? roomState.dice[0] + roomState.dice[1] : 7);
+                const multiplier = (ownerUtilityCount >= 2) ? 10 : 5;
+                finalRent = diceSum * multiplier;
+            } 
+            // 3. Zwykłe ulice i miasta (zależnie od domków / hotelu)
+            else if (tile.type === "prop" && tile.rentSet) {
+                const houses = pState.houses || 0;
+                const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+
+                if (houses === 0) {
+                    finalRent = tile.rentSet[0];
+                    const grpIndices = boardData.map((t, i) => t.group === tile.group ? i : -1).filter(i => i !== -1);
+                    const hasFullSet = grpIndices.every(i => roomState.props[i]?.owner === owner.id);
+                    if (hasFullSet && roomState.settings.doubleRent) {
+                        finalRent *= 2;
+                    }
+                } else {
+                    // Indeks w tabeli: 1 domek = index 1, ..., 4 domki = index 4, Hotel = index 5
+                    const tableIdx = houses > maxH ? 5 : Math.min(houses, 4);
+                    finalRent = tile.rentSet[tableIdx] || tile.rentSet[1];
+                }
+            }
+
+            player.cash -= finalRent;
+            owner.cash += finalRent;
+            return `Płaci ${finalRent}$ czynszu dla ${owner.nick}!`;
+        }
+    }
+    return origProcessLanding(player, tile, posIdx, boardData);
+};
+
+// Tooltip po najechaniu myszką pokazujący dokładny cennik z tabeli
+getTileTooltipHTML = function(tile, propState) {
+    if (tile.type === "station") {
+        return `<div class="tooltip-title">${tile.name} (Stacja)</div><div class="tooltip-row"><span>1 stacja:</span><strong>50$</strong></div><div class="tooltip-row"><span>2 stacje:</span><strong>150$</strong></div><div class="tooltip-row"><span>3 stacje:</span><strong>250$</strong></div><div class="tooltip-row"><span>4 stacje:</span><strong>400$</strong></div>`;
+    }
+    if (tile.type === "utility") {
+        return `<div class="tooltip-title">${tile.name} (Media)</div><div style="font-size:10.5px; color:#94a3b8; margin-top:3px;">Czynsz = Rzut kośćmi $\times 5$ (lub $\times 10$ przy dwóch mediach).</div>`;
+    }
+    if (tile.type !== "prop") {
+        return `<div class="tooltip-title">${tile.name}</div><div>Pole specjalne</div>`;
+    }
+
+    const price = tile.price || 100;
+    const houseCost = tile.house || 50;
+    const r = tile.rentSet || [10, 50, 150, 450, 625, 750];
+
+    let html = `<div class="tooltip-title">${tile.name}</div>`;
+    html += `<div class="tooltip-row"><span>Cena zakupu:</span><strong>${price}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>Cena domku:</span><strong>${houseCost}$</strong></div>`;
+    html += `<div class="tooltip-row" style="border-top:1px solid #3b3354; margin-top:3px; padding-top:3px;"><span>Czynsz bazowy:</span><strong>${r[0]}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>1 domek:</span><strong>${r[1]}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>2 domki:</span><strong>${r[2]}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>3 domki:</span><strong>${r[3]}$</strong></div>`;
+    html += `<div class="tooltip-row"><span>4 domki:</span><strong>${r[4]}$</strong></div>`;
+    html += `<div class="tooltip-row" style="color:#fde047;"><span>Hotel (👑):</span><strong>${r[5]}$</strong></div>`;
+
+    if (propState) {
+        const owner = roomState.players[propState.owner];
+        const hCnt = propState.houses || 0;
+        const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+        const statusStr = hCnt > maxH ? "Hotel 🏨" : (hCnt === 0 ? "Brak zabudowy" : `${hCnt} domki 🏠`);
+        html += `<div style="margin-top:4px; border-top:1px dashed #475569; padding-top:3px; color:${owner?.color || '#fff'}">Właściciel: ${owner?.nick || 'Bank'} (${statusStr})</div>`;
+    }
+
+    return html;
+};

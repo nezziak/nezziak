@@ -1142,3 +1142,30 @@ input:checked + .slider:before { transform: translateX(18px); }
     justify-content: space-between;
     margin: 2px 0;
 }
+
+/* ====================================================
+   WŁĄCZENIE PRZEWIJANIA GÓRA-DÓŁ NA CAŁEJ STRONIE
+   ==================================================== */
+html, body {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+body {
+    display: block !important;
+}
+
+/* Gówny kontener widoku Monopoly dopasowujący się do przewijania */
+.main-view.active {
+    height: auto !important;
+    min-height: calc(100vh - 54px) !important;
+    overflow-y: visible !important;
+}
+
+.richup-layout {
+    height: auto !important;
+    min-height: calc(100vh - 70px) !important;
+    overflow: visible !important;
+}
