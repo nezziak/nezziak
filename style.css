@@ -1,0 +1,1102 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+body {
+    background-color: #13111c;
+    color: #f1f5f9;
+    height: 100vh;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* GÓRNY PASEK */
+.topbar {
+    height: 54px;
+    background: #1b1828;
+    border-bottom: 1px solid #2e2942;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    flex-shrink: 0;
+}
+.brand {
+    font-size: 22px;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+.brand span { color: #a855f7; font-weight: 800; }
+
+.game-tabs {
+    display: flex;
+    gap: 6px;
+}
+.tab-btn {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid transparent;
+    padding: 7px 13px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+}
+.tab-btn:hover, .tab-btn.active {
+    background: #2a243d;
+    color: #ffffff;
+    border-color: #4c3f70;
+}
+.casino-tab {
+    color: #fde047 !important;
+}
+
+.top-profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.top-profile input[type="text"] {
+    background: #13111c;
+    border: 1px solid #3b3354;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    width: 120px;
+    font-weight: 600;
+}
+.top-profile input[type="color"] {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+/* WIDOKI GŁÓWNE */
+.main-view {
+    display: none;
+    flex: 1;
+    height: calc(100vh - 54px);
+    overflow: hidden;
+}
+.main-view.active {
+    display: block;
+}
+
+/* ====================================================
+   NAPRAWIONY UKŁAD 3-KOLUMNOWY (PRAWY PANEL OD GÓRY DO DOŁU)
+   ==================================================== */
+.richup-layout {
+    display: grid;
+    grid-template-columns: 290px 1fr 370px;
+    gap: 12px;
+    padding: 10px 14px;
+    height: calc(100vh - 54px);
+    max-height: calc(100vh - 54px);
+    overflow: hidden;
+}
+
+.left-panel, .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+/* Prawa kolumna od góry do dołu z własnym paskiem przewijania */
+.right-panel {
+    overflow-y: auto !important;
+    padding-right: 2px;
+}
+.right-panel::-webkit-scrollbar {
+    width: 5px;
+}
+.right-panel::-webkit-scrollbar-thumb {
+    background: #3b3354;
+    border-radius: 4px;
+}
+
+.center-board-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.monopoly-board {
+    display: grid;
+    aspect-ratio: 1 / 1;
+    height: min(94vh, calc(100vh - 75px));
+    max-height: 100%;
+    max-width: 100%;
+    background: #181524;
+    border: 4px solid #322c47;
+    border-radius: 12px;
+    gap: 2px;
+    padding: 3px;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.65);
+}
+
+.board-inner-center {
+    background: #13111c;
+    border: 2px solid #29243b;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 12px 10px;
+    gap: 8px;
+    text-align: center;
+    overflow: hidden;
+}
+
+.top-dice-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.history-table-wrap {
+    width: 96%;
+    max-width: 480px;
+    background: #181524;
+    border: 1px solid #322c47;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 120px;
+    max-height: 200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.history-log-list {
+    padding: 6px 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11.5px;
+    text-align: left;
+    flex: 1;
+}
+
+.panel-card {
+    background: #1d192b;
+    border: 1px solid #2e2942;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.share-row {
+    display: flex;
+    gap: 6px;
+}
+.share-row input {
+    flex: 1;
+    background: #13111c;
+    border: 1px solid #3b3354;
+    color: #fff;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+}
+
+.lobby-type-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: #cbd5e1;
+}
+.lobby-type-row select {
+    background: #13111c;
+    color: white;
+    border: 1px solid #3b3354;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.public-rooms-box {
+    border-top: 1px solid #2e2942;
+    padding-top: 8px;
+}
+.small-label {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+.public-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    max-height: 55px;
+    overflow-y: auto;
+}
+.room-pill {
+    background: #2a243d;
+    color: #c084fc;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: bold;
+}
+.room-pill:hover { background: #3b3254; }
+
+/* CZAT TEKSTOWY */
+.chat-card {
+    flex: 1;
+    min-height: 0;
+}
+.chat-messages {
+    flex: 1;
+    background: #151221;
+    border-radius: 8px;
+    padding: 10px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+}
+.chat-empty {
+    color: #64748b;
+    text-align: center;
+    margin: auto;
+}
+.chat-line {
+    line-height: 1.35;
+    word-break: break-word;
+}
+.chat-input-row {
+    display: flex;
+    gap: 6px;
+}
+.chat-input-row input {
+    flex: 1;
+    background: #13111c;
+    border: 1px solid #3b3354;
+    color: white;
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+.btn-send {
+    background: #7c3aed;
+    color: white;
+    border: none;
+    padding: 0 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* PLANSZA MONOPOLY (ŚRODEK) */
+.center-board-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    overflow: hidden;
+}
+
+.monopoly-board {
+    display: grid;
+    aspect-ratio: 1 / 1;
+    height: min(91vh, 100%);
+    max-width: 100%;
+    background: #181524;
+    border: 4px solid #322c47;
+    border-radius: 12px;
+    gap: 2px;
+    padding: 3px;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.65);
+}
+
+/* KAFELKI PLANSZY (11x11 lub 16x16) */
+.m-tile {
+    background: #221e33;
+    border: 1px solid #322c47;
+    border-radius: 4px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px;
+    text-align: center;
+    overflow: hidden;
+    user-select: none;
+}
+.m-tile.corner {
+    background: #28233c;
+    border-color: #524775;
+}
+.m-tile.airport {
+    background: #1d263b;
+}
+
+/* Pasek koloru skierowany zawsze do środka planszy */
+.tile-bar {
+    width: 100%;
+    height: 11px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.tile-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.05;
+    padding: 1px;
+}
+.tile-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+.tile-price {
+    font-size: 9px;
+    font-weight: 800;
+    color: #cbd5e1;
+    background: rgba(0,0,0,0.35);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* Pasek właściciela */
+.tile-owner {
+    width: 100%;
+    height: 4px;
+    flex-shrink: 0;
+}
+
+/* DUŻE PIONKI NA POLACH */
+.tile-pawns {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    pointer-events: none;
+    z-index: 6;
+}
+.pawn-circle {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+}
+
+/* ŚRODEK PLANSZY */
+.board-inner-center {
+    background: #13111c;
+    border: 2px solid #29243b;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    gap: 12px;
+    text-align: center;
+}
+
+.turn-status-pill {
+    background: #231f33;
+    border: 1px solid #3f375c;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+/* DUŻE KOSTKI NA ŚRODKU */
+.big-dice-container {
+    display: flex;
+    gap: 16px;
+    cursor: pointer;
+    margin: 4px 0;
+}
+.big-die {
+    width: 68px;
+    height: 68px;
+    background: linear-gradient(145deg, #ffffff, #cbd5e1);
+    color: #0f172a;
+    border-radius: 16px;
+    font-size: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    transition: transform 0.15s;
+    user-select: none;
+}
+.big-die:hover {
+    transform: scale(1.06) rotate(-4deg);
+}
+
+.btn-richup-start {
+    background: #6d28d9;
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(109, 40, 217, 0.5);
+}
+.btn-richup-start:hover { background: #7c3aed; }
+.room-joined-sub {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+.main-turn-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+.btn-action-roll { background: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-action-buy { background: #16a34a; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-action-house { background: #d97706; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-action-end { background: #475569; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+
+.vacation-pot-badge {
+    font-size: 12px;
+    color: #94a3b8;
+    background: #1b1828;
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+.action-log-box {
+    background: #1b1828;
+    border: 1px solid #2e2942;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #cbd5e1;
+    max-width: 92%;
+}
+
+/* PRAWA KOLUMNA: GRACZE I ZASADY ROZGRYWKI */
+.players-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mini-btns { display: flex; gap: 5px; }
+.btn-dark { background: #2c2640; color: white; border: 1px solid #453c63; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
+.btn-dark-sm { background: #2c2640; color: #e2e8f0; border: 1px solid #453c63; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; }
+
+.players-list-right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 155px;
+    overflow-y: auto;
+}
+.p-row {
+    background: #14111f;
+    padding: 7px 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+}
+.p-left { display: flex; align-items: center; gap: 8px; }
+.p-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; }
+.host-crown {
+    background: #422006;
+    color: #fde047;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.game-admin-btns {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+.btn-bankrupt { flex: 1; background: #991b1b; color: #fecaca; border: none; padding: 7px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.btn-reset-host { flex: 1.2; background: #5b21b6; color: #ede9fe; border: none; padding: 7px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+
+/* SUWAKI ZASAD GRY (JAK W RICHUP.IO) */
+.settings-card {
+    flex: 1;
+    overflow-y: auto;
+}
+.lock-banner {
+    background: #3b1d2e;
+    color: #fda4af;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+.rule-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #262138;
+}
+.rule-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+.rule-info strong { font-size: 12.5px; color: #f1f5f9; }
+.rule-info span { font-size: 10.5px; color: #94a3b8; line-height: 1.2; }
+
+.rule-row select {
+    background: #13111c;
+    color: white;
+    border: 1px solid #3b3354;
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    max-width: 150px;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #332d4a;
+    transition: .2s;
+    border-radius: 22px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+}
+input:checked + .slider { background-color: #8b5cf6; }
+input:checked + .slider:before { transform: translateX(18px); }
+
+.my-owned-section {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #2e2942;
+}
+.my-owned-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    margin-top: 6px;
+}
+.owned-item {
+    background: #14111f;
+    padding: 6px 8px;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hidden { display: none !important; }
+
+/* POZOSTAŁE GRY (CHIŃCZYK, LIAR, SZACHY, TETRIS, KASYNO) */
+.subgame-container {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    padding: 20px;
+}
+.subgame-side {
+    background: #1d192b;
+    border: 1px solid #2e2942;
+    padding: 20px;
+    border-radius: 12px;
+    width: 320px;
+    text-align: center;
+}
+.ludo-board-grid {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    grid-template-rows: repeat(11, 1fr);
+    width: 560px;
+    height: 560px;
+    background: #181524;
+    gap: 3px;
+    padding: 6px;
+    border-radius: 12px;
+    border: 3px solid #322c47;
+}
+.ludo-c { background: #262138; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+.ludo-c.empty { background: transparent; }
+
+.liar-wrap { max-width: 800px; margin: 30px auto; text-align: center; background: #1d192b; padding: 25px; border-radius: 14px; }
+.liar-felt { background: #064e3b; border: 5px solid #78350f; border-radius: 20px; padding: 25px; margin: 15px 0; }
+.liar-hand-row { display: flex; gap: 10px; justify-content: center; min-height: 95px; }
+.card-box { width: 65px; height: 92px; background: white; color: black; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; cursor: pointer; }
+.card-box.sel { transform: translateY(-12px); outline: 3px solid #f59e0b; }
+
+.chess-board-grid { display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); width: 540px; height: 540px; border: 5px solid #322c47; }
+.c-sq { display: flex; align-items: center; justify-content: center; font-size: 34px; cursor: pointer; }
+.c-light { background: #cbd5e1; color: #0f172a; }
+.c-dark { background: #475569; color: #f8fafc; }
+.c-sq.sel { outline: 3px solid #f59e0b; }
+
+.casino-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 900px; margin: 40px auto; }
+.slot-reels { display: flex; gap: 12px; justify-content: center; margin: 15px 0; }
+.reel-box { width: 70px; height: 80px; background: #13111c; border: 2px solid #a855f7; border-radius: 10px; font-size: 36px; display: flex; align-items: center; justify-content: center; }
+.roulette-circle { width: 80px; height: 80px; border-radius: 50%; background: #16a34a; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; }
+
+/* ====================================================
+   CHIŃCZYK ONLINE: PODŚWIETLANIE PIONKÓW I KOLOROWE METY
+   ==================================================== */
+.ludo-board-grid {
+    width: min(85vh, 620px) !important;
+    height: min(85vh, 620px) !important;
+    background: #13111c !important;
+    border: 4px solid #3b3354 !important;
+    gap: 4px !important;
+    padding: 8px !important;
+}
+
+.ludo-c {
+    background: #231f33;
+    border: 1px solid #383052;
+    border-radius: 6px;
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: bold;
+    color: rgba(255,255,255,0.45);
+}
+
+/* Pola domków końcowych (Czerwone, Niebieskie, Żółte, Zielone) */
+.ludo-home-0 { background: rgba(239, 68, 68, 0.38) !important; border: 2px solid #ef4444 !important; color: #fecaca !important; }
+.ludo-home-1 { background: rgba(59, 130, 246, 0.38) !important; border: 2px solid #3b82f6 !important; color: #bfdbfe !important; }
+.ludo-home-2 { background: rgba(234, 179, 8, 0.38) !important; border: 2px solid #eab308 !important; color: #fef08a !important; }
+.ludo-home-3 { background: rgba(34, 197, 94, 0.38) !important; border: 2px solid #22c55e !important; color: #bbf7d0 !important; }
+
+/* Pola startowe poszczególnych kolorów */
+.ludo-start-0 { border: 2.5px solid #ef4444 !important; box-shadow: inset 0 0 8px rgba(239,68,68,0.5); }
+.ludo-start-1 { border: 2.5px solid #3b82f6 !important; box-shadow: inset 0 0 8px rgba(59,130,246,0.5); }
+.ludo-start-2 { border: 2.5px solid #eab308 !important; box-shadow: inset 0 0 8px rgba(234,179,8,0.5); }
+.ludo-start-3 { border: 2.5px solid #22c55e !important; box-shadow: inset 0 0 8px rgba(34,197,94,0.5); }
+
+/* PIONEK, KTÓRY MOŻE WYJŚĆ Z BAZY LUB RUSZYĆ SIĘ (PULSUJE NA ZŁOTO!) */
+.pawn-movable {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    border: 3px solid #fde047 !important;
+    animation: ludoGlow 0.65s infinite alternate !important;
+    z-index: 20 !important;
+}
+
+@keyframes ludoGlow {
+    from {
+        transform: scale(1.05);
+        box-shadow: 0 0 6px #fde047, 0 0 12px #f59e0b;
+    }
+    to {
+        transform: scale(1.32);
+        box-shadow: 0 0 16px #ffffff, 0 0 25px #fde047;
+    }
+}
+
+/* PRZYCISK KICK (TYLKO DLA HOSTA) */
+.btn-kick {
+    background: #dc2626;
+    color: #ffffff;
+    border: none;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: background 0.15s, transform 0.1s;
+}
+.btn-kick:hover {
+    background: #ef4444;
+    transform: scale(1.08);
+}
+
+/* ====================================================
+   DUŻE PIONKI 3D + ANIMACJA SKAKANIA PO POLACH
+   ==================================================== */
+.m-tile {
+    overflow: visible !important; /* Pozwala dużym pionkom lekko wystawać podczas skoku */
+}
+
+.pawn-circle {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    border: 3px solid #ffffff !important;
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.95), 0 0 8px rgba(255, 255, 255, 0.6), inset 0 3px 5px rgba(255,255,255,0.4) !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    color: #ffffff !important;
+    text-shadow: 0 2px 3px #000000 !important;
+    z-index: 30 !important;
+    transition: transform 0.15s ease;
+}
+
+/* Gdy na jednym polu stoi kilka pionków, układają się z lekkim przesunięciem */
+.tile-pawns {
+    gap: 3px !important;
+    padding: 2px !important;
+    z-index: 25 !important;
+}
+
+/* Animacja podskoku przy przechodzeniu z pola na pole */
+.pawn-hopping {
+    animation: pawnHopStep 0.14s ease-in-out infinite alternate !important;
+    border-color: #fde047 !important;
+    z-index: 50 !important;
+}
+
+@keyframes pawnHopStep {
+    0% {
+        transform: translateY(0) scale(1.05);
+    }
+    100% {
+        transform: translateY(-14px) scale(1.28);
+        box-shadow: 0 14px 20px rgba(0, 0, 0, 0.9), 0 0 14px #fde047 !important;
+    }
+}
+
+/* ====================================================
+   KOSTKI U GÓRY POD WĘZŁEM DTŚ RUDA + ANIMACJA + TABELKA HISTORII
+   ==================================================== */
+.board-inner-center {
+    justify-content: flex-start !important;
+    padding-top: 18px !important;
+    gap: 14px !important;
+}
+
+.top-dice-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* ANIMACJA OBRACANIA KOSTEK PRZY RZUCIE */
+.die-rolling {
+    animation: diceSpin3D 0.48s cubic-bezier(0.25, 1, 0.5, 1) !important;
+    background: linear-gradient(145deg, #fde047, #f59e0b) !important;
+    color: #090d16 !important;
+}
+
+@keyframes diceSpin3D {
+    0%   { transform: rotate(0deg) scale(1) translateY(0); }
+    35%  { transform: rotate(180deg) scale(1.25) translateY(-16px); }
+    70%  { transform: rotate(320deg) scale(1.15) translateY(-6px); }
+    100% { transform: rotate(360deg) scale(1) translateY(0); }
+}
+
+/* TABELKA HISTORII AKCJI POD KOSTKAMI */
+.history-table-wrap {
+    width: 92%;
+    max-width: 520px;
+    background: #181524;
+    border: 1px solid #322c47;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    margin-top: 4px;
+    flex: 1;
+    max-height: 240px;
+}
+
+.history-header {
+    background: #231f33;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #e2e8f0;
+    border-bottom: 1px solid #322c47;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-log-list {
+    padding: 10px 12px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    text-align: left;
+    flex: 1;
+}
+
+.history-row {
+    background: #13111c;
+    border-left: 4px solid #8b5cf6;
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: #e2e8f0;
+    line-height: 1.35;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    animation: fadeInRow 0.25s ease;
+}
+
+.history-time {
+    font-size: 10px;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
+@keyframes fadeInRow {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ====================================================
+   WYŁĄCZENIE MIGANIA HISTORII NA ŚRODKU PLANSZY
+   ==================================================== */
+.history-row {
+    animation: none !important;
+    transition: none !important;
+}
+
+.history-log-list {
+    scroll-behavior: auto !important;
+    overflow-anchor: none !important;
+}
+
+/* ====================================================
+   WYRAŹNE PODŚWIETLENIE I OBRAMÓWKA KUPIONYCH PÓL
+   ==================================================== */
+.m-tile.owned-tile {
+    border-width: 3px !important;
+    border-style: solid !important;
+    z-index: 4;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.tile-owner-badge {
+    width: 100%;
+    height: 15px;
+    font-size: 9px;
+    font-weight: 900;
+    color: #ffffff;
+    text-shadow: 0 1px 2px #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+}
+
+/* ====================================================
+   DŁUGA HISTORIA DO SAMEGO DOŁU + CIEMNE PASKI PRZEWIJANIA
+   ==================================================== */
+
+/* Rozciągnięcie tabelki z historią aż do dołu środka planszy */
+.history-table-wrap {
+    flex: 1 !important;
+    max-height: none !important;
+    height: 100% !important;
+    margin-bottom: 4px !important;
+}
+
+/* Nowoczesny, ciemno-fioletowy scrollbar w całej grze (zero białych pasków!) */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #6d28d9 #13111c;
+}
+
+*::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #13111c;
+    border-radius: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #4c1d95;
+    border-radius: 8px;
+    border: 1px solid #2e2942;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #7c3aed;
+}
+
+/* ====================================================
+   NOWY PANEL TWORZENIA I DOŁĄCZANIA DO LOBBY (LEWA KOLUMNA)
+   ==================================================== */
+.lobby-choice-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.btn-create-lobby {
+    background: linear-gradient(135deg, #7c3aed, #5b21b6);
+    color: #ffffff;
+    border: 1px solid #a78bfa;
+    padding: 11px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+    transition: transform 0.15s, background 0.15s;
+}
+.btn-create-lobby:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+.btn-join-toggle {
+    background: #262138;
+    color: #e2e8f0;
+    border: 1px solid #453c63;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-join-toggle:hover {
+    background: #322b4a;
+}
+
+.lobby-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 800;
+    margin: 2px 0;
+}
+.lobby-divider::before, .lobby-divider::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #2e2942;
+}
+.lobby-divider span {
+    padding: 0 8px;
+}
+
+.join-friend-box {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    animation: fadeInRow 0.2s ease;
+}
+.join-friend-box input {
+    flex: 1;
+    background: #13111c;
+    border: 2px solid #38bdf8;
+    color: #ffffff;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+.active-lobby-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.active-room-banner {
+    background: #13111c;
+    border: 2px dashed #8b5cf6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.active-room-banner span {
+    font-size: 12px;
+    color: #94a3b8;
+}
+.active-room-banner strong {
+    font-size: 17px;
+    color: #fde047;
+    letter-spacing: 1.5px;
+}
