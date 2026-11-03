@@ -1100,3 +1100,45 @@ input:checked + .slider:before { transform: translateX(18px); }
     color: #fde047;
     letter-spacing: 1.5px;
 }
+/* ====================================================
+   DOWOLNA LICZBA DOMKÓW + HOVER TOOLTIP (CENY I CZYNSZE)
+   ==================================================== */
+.m-tile {
+    cursor: pointer;
+}
+
+/* Wyskakujący dymek z informacjami o polu po najechaniu myszką */
+.tile-tooltip {
+    position: absolute;
+    bottom: 105%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1b1828;
+    border: 2px solid #8b5cf6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    width: 170px;
+    font-size: 11px;
+    color: #f8fafc;
+    text-align: left;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 1000;
+    display: none;
+}
+.m-tile:hover .tile-tooltip {
+    display: block;
+}
+.tooltip-title {
+    font-weight: 800;
+    font-size: 12px;
+    border-bottom: 1px solid #3b3354;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    color: #fde047;
+}
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 2px 0;
+}
