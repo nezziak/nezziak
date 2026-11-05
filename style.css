@@ -1169,3 +1169,143 @@ body {
     min-height: calc(100vh - 70px) !important;
     overflow: visible !important;
 }
+
+/* ====================================================
+   STABILNA HISTORIA (ZERO SKAKANIA) + KUPOWANIE W TOOLTIPIE NA POLU
+   ==================================================== */
+
+/* Sztywna wysokość sekcji z kostkami, żeby tabelka historii nigdy nie skakała góra-dół */
+.top-dice-zone {
+    min-height: 195px !important;
+    justify-content: flex-start !important;
+    flex-shrink: 0 !important;
+}
+
+/* Tabelka historii nieco niżej od góry i sztywno osadzona */
+.history-table-wrap {
+    margin-top: 10px !important;
+    height: 215px !important;
+    max-height: 215px !important;
+    flex: 0 0 215px !important;
+}
+
+/* Odblokowanie klikania w przyciski wewnątrz dymku (tooltipa) nad polem */
+.tile-tooltip {
+    pointer-events: auto !important;
+    padding-bottom: 10px !important;
+}
+
+/* Niewidoczny mostek pod dymkiem, żeby nie znikał gdy przesuwasz myszkę z pola na przycisk "Kup" */
+.tile-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 14px;
+    background: transparent;
+}
+
+/* Przyciski kupowania pola i domku w dymku nad polem */
+.tooltip-buy-btn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 7px 8px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 11.5px;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: transform 0.12s, filter 0.12s;
+}
+.tooltip-buy-btn:hover {
+    transform: scale(1.04);
+    filter: brightness(1.15);
+}
+.tooltip-buy-prop {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+}
+.tooltip-buy-house {
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+/* Złota pulsująca poświata na kafelku, który możesz teraz kupić lub rozbudować */
+.m-tile.actionable-tile {
+    outline: 2.5px dashed #fde047 !important;
+    box-shadow: 0 0 15px rgba(253, 224, 71, 0.75) !important;
+    z-index: 20 !important;
+}
+
+/* ====================================================
+   PRZESUWANIE + ROZCIĄGANIE (RESIZE) TABELKI HISTORII GÓRA-DÓŁ
+   ==================================================== */
+.history-table-wrap {
+    position: relative !important;
+}
+
+.history-header {
+    cursor: grab !important;
+    user-select: none !important;
+    position: relative;
+}
+
+.history-header:active {
+    cursor: grabbing !important;
+    background: #2e2846 !important;
+}
+
+.history-header::before {
+    content: "⠿";
+    color: #a78bfa;
+    margin-right: 6px;
+    font-size: 14px;
+}
+
+/* Uchwyty do rozciągania na górze i na dole tabelki */
+.hist-resize-handle {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 9px;
+    cursor: ns-resize !important;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+
+.hist-resize-handle::after {
+    content: "";
+    width: 42px;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(167, 139, 250, 0.35);
+    transition: background 0.15s, width 0.15s;
+}
+
+.hist-resize-handle:hover {
+    background: rgba(139, 92, 246, 0.25);
+}
+
+.hist-resize-handle:hover::after {
+    background: #fde047;
+    width: 65px;
+}
+
+.hist-resize-top {
+    top: -3px;
+}
+
+.hist-resize-bottom {
+    bottom: -3px;
+}
+
+.history-table-wrap.dragging-now {
+    border-color: #a855f7 !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85) !important;
+    transition: none !important;
+    user-select: none !important;
+}

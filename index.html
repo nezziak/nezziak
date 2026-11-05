@@ -42,7 +42,6 @@
                 <div class="panel-card">
                     <div class="card-title">🏠 Zarządzanie Lobby</div>
 
-                    <!-- WIDOK 1: GDY NIE JESTEŚ W ŻADNYM LOBBY (WYBÓR) -->
                     <div id="lobby-menu-choice" class="lobby-choice-box">
                         <button class="btn-create-lobby" onclick="createNewLobbyRoom()">
                             ➕ Stwórz własne Lobby
@@ -54,14 +53,12 @@
                             🔑 Dołącz do znajomego
                         </button>
 
-                        <!-- Ukryte pole na wpisanie kodu znajomego (pojawia się po kliknięciu) -->
                         <div id="join-friend-box" class="join-friend-box hidden">
                             <input type="text" id="friend-code-input" placeholder="Wpisz kod (np. RSL492)" maxlength="10">
                             <button class="btn-action-buy" onclick="joinFriendLobbyByCode()">Wejdź</button>
                         </div>
                     </div>
 
-                    <!-- WIDOK 2: GDY JESTEŚ JUŻ W LOBBY (TWÓJ KOD + ZAPRASZANIE) -->
                     <div id="active-lobby-info" class="active-lobby-box hidden">
                         <div class="active-room-banner">
                             <span>Kod Twojego Lobby:</span>
@@ -73,7 +70,6 @@
                             <button class="btn-bankrupt" style="flex:0; padding:6px 10px;" onclick="leaveCurrentLobby()" title="Opuść to lobby">🚪 Wyjdź</button>
                         </div>
 
-                        <!-- Ukryty input dla zachowania kompatybilności ze starym skryptem -->
                         <input type="hidden" id="room-code-box" value="">
 
                         <div class="lobby-type-row" style="margin-top:6px;">
@@ -85,7 +81,6 @@
                         </div>
                     </div>
 
-                    <!-- LISTA PUBLICZNYCH POKOI -->
                     <div class="public-rooms-box">
                         <div class="small-label">🌍 Otwarte pokoje publiczne (kliknij, aby dołączyć):</div>
                         <div id="public-rooms-list" class="public-list">Ładowanie...</div>
@@ -109,7 +104,7 @@
                 <div id="monopoly-board" class="monopoly-board">
                     <div class="board-inner-center">
                         
-                        <!-- KOSTKI I STATUS U GÓRY POD WĘZŁEM DTŚ RUDA -->
+                        <!-- KOSTKI I STATUS U GÓRY (SZTYWNA WYSOKOŚĆ - ZERO SKAKANIA!) -->
                         <div class="top-dice-zone">
                             <div class="turn-status-pill" id="turn-status-text">W Lobby – skonfiguruj grę po prawej stronie</div>
 
@@ -126,14 +121,15 @@
                             <div id="playing-center-controls" class="playing-controls hidden">
                                 <div class="main-turn-btns">
                                     <button id="btn-roll-dice" class="btn-action-roll" onclick="rollDiceNow()">🎲 Rzuć kostką</button>
-                                    <button id="btn-buy-prop" class="btn-action-buy hidden" onclick="buyCurrentProperty()">💰 Kup pole</button>
-                                    <button id="btn-build-house" class="btn-action-house hidden" onclick="buildHouseModalOrCurrent()">🏠 Postaw domek</button>
                                     <button id="btn-finish-turn" class="btn-action-end" onclick="nextTurnNow()">⏭️ Koniec tury</button>
+                                </div>
+                                <div style="font-size:11px; color:#a78bfa; margin-top:4px;">
+                                    💡 Najedź lub kliknij na pole na planszy, aby kupić działkę lub postawić domek!
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TABELKA HISTORII AKCJI -->
+                        <!-- TABELKA HISTORII AKCJI (OPUSZCZONA NIŻEJ I STABILNA) -->
                         <div class="history-table-wrap">
                             <div class="history-header">
                                 <span>📜 Historia rozgrywki (Na żywo)</span>
@@ -170,6 +166,19 @@
                 <div class="panel-card settings-card" id="settings-panel-right">
                     <div class="card-title">⚙️ Zasady rozgrywki</div>
                     <div id="settings-lock-info" class="lock-banner hidden">🔒 Gra trwa! Kliknij "Reset do Ustawień" powyżej.</div>
+
+                    <div class="rule-row">
+                        <div class="rule-info">
+                            <strong>🏨 Maks. domków przed hotelem</strong>
+                            <span>Ile domków można postawić przed hotelem (domyślnie 4)</span>
+                        </div>
+                        <select id="rule-max-houses" onchange="updateSettingsFromUI()">
+                            <option value="2">2 domki + Hotel</option>
+                            <option value="3">3 domki + Hotel</option>
+                            <option value="4" selected>4 domki + Hotel (Klasyk)</option>
+                            <option value="5">5 domków + Hotel</option>
+                        </select>
+                    </div>
 
                     <div class="rule-row">
                         <div class="rule-info">
@@ -277,23 +286,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <!-- TUTAJ WPINAMY MAKS. DOMKÓW PRZED HOTELEM -->
-                    <div class="rule-row">
-                        <div class="rule-info">
-                            <strong>🏨 Maks. domków przed hotelem</strong>
-                            <span>Ile domków można postawić przed hotelem (domyślnie 4)</span>
-                        </div>
-                        <select id="rule-max-houses" onchange="updateSettingsFromUI()">
-                            <option value="2">2 domki + Hotel</option>
-                            <option value="3">3 domki + Hotel</option>
-                            <option value="4" selected>4 domki + Hotel (Klasyk)</option>
-                            <option value="5">5 domków + Hotel</option>
-                        </select>
-                    </div>
-
-                    <div class="rule-row">
-                        <div class="rule-info">
-                            <strong>🗺️ Mapa planszy</strong>
 
                     <div class="my-owned-section">
                         <div class="card-title">🏘️ Twoje Dzielnice</div>
@@ -304,12 +296,12 @@
 
         </div>
     </main>
- <!-- ====================================================
+
+    <!-- ====================================================
          WIDOK 2: CHIŃCZYK (LUDO) - 100% ONLINE MULTIPLAYER
          ==================================================== -->
     <main id="ludo-view" class="main-view">
         <div class="richup-layout">
-            <!-- Lewy panel: Pokój i Gracze Online w Chińczyku -->
             <aside class="left-panel">
                 <div class="panel-card">
                     <div class="card-title">🎲 Lobby Chińczyka (Pokój: <span id="ludo-room-code">RSL1</span>)</div>
@@ -332,12 +324,10 @@
                 </div>
             </aside>
 
-            <!-- Środek: Plansza Chińczyka 11x11 z kolorowymi domkami mety -->
             <section class="center-board-wrap">
                 <div id="ludo-grid" class="ludo-board-grid"></div>
             </section>
 
-            <!-- Prawy panel: Kostka i sterowanie turą -->
             <aside class="right-panel">
                 <div class="panel-card" style="text-align:center; align-items:center;">
                     <h2>🎲 Rzut i Tura</h2>
@@ -359,7 +349,6 @@
          ==================================================== -->
     <main id="liar-view" class="main-view">
         <div class="richup-layout">
-            <!-- Lewy panel: Gracze przy stole i ich rewolwery -->
             <aside class="left-panel">
                 <div class="panel-card">
                     <div class="card-title">🃏 Gracze przy stole (<span id="liar-room-code">RSL1</span>)</div>
@@ -373,7 +362,6 @@
                 </div>
             </aside>
 
-            <!-- Środek: Stół karciany Online -->
             <section class="center-board-wrap">
                 <div class="liar-wrap" style="width:100%; margin:0;">
                     <h2>🃏 Liar's Table Online (Stołowy Blef)</h2>
@@ -396,7 +384,6 @@
                 </div>
             </section>
 
-            <!-- Prawy panel: Zasady Liar's Table -->
             <aside class="right-panel">
                 <div class="panel-card">
                     <div class="card-title">🔫 Jak grać w Liar's Table?</div>
