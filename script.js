@@ -2791,3 +2791,401 @@ renderRichupScreen = function() {
         }
     }
 };
+
+// =====================================================
+// POWIADOMIENIA (TOASTY) + PRAWDZIWE KARTY SZANSY + UKŁAD GRY (CZAT I DZIELNICE PO PRAWEJ)
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+let lastSeenNotificationId = 0;
+
+// 1. Funkcja wyświetlająca ładne powiadomienie u góry ekranu
+function showGameToast(title, message, icon = "🔔", borderColor = "#8b5cf6", duration = 4500) {
+    let container = document.getElementById("rsl-toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "rsl-toast-container";
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = "rsl-toast";
+    toast.style.borderLeftColor = borderColor;
+    toast.innerHTML = `
+        <div class="rsl-toast-icon">${icon}</div>
+        <div class="rsl-toast-body">
+            <div class="rsl-toast-title">${title}</div>
+            <div>${message}</div>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Maksymalnie 3 powiadomienia naraz, żeby nie zasłonić ekranu
+    while (container.children.length > 3) {
+        container.removeChild(container.firstChild);
+    }
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(-10px)";
+        toast.style.transition = "all 0.25s ease";
+        setTimeout(() => toast.remove(), 260);
+    }, duration);
+}
+
+// Wysyłanie powiadomienia do wszystkich graczy w pokoju
+function broadcastToast(title, message, icon = "🔔", color = "#8b5cf6") {
+    if (!roomState) return;
+    roomState.lastNotification = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        title: title,
+        message: message,
+        icon: icon,
+        color: color
+    };
+    lastSeenNotificationId = roomState.lastNotification.id;
+    showGameToast(title, message, icon, color);
+}
+
+// 2. Przebudowa prawej kolumny:
+// Wyciągamy "Twoje Dzielnice" z wnętrza karty Zasad Rozgrywki do osobnego pudełka,
+// żeby po ukryciu zasad podczas gry Twoje Dzielnice zostały na widoku pod Czatem!
+function setupDynamicRightPanelLayout() {
+    const rightPanel = document.querySelector("#monopoly-view .right-panel");
+    const leftPanel = document.querySelector("#monopoly-view .left-panel");
+    const settingsCard = document.getElementById("settings-panel-right");
+    const chatCard = document.querySelector(".chat-card");
+    const ownedSection = document.querySelector(".my-owned-section");
+
+    if (!rightPanel || !leftPanel || !settingsCard || !chatCard || !ownedSection) return;
+
+    // Upewnij się, że "Twoje Dzielnice" są osobną kartą na dole prawego panelu (poza settings-panel-right)
+    if (ownedSection.parentElement === settingsCard) {
+        ownedSection.classList.remove("my-owned-section");
+        ownedSection.classList.add("owned-card-standalone");
+        rightPanel.appendChild(ownedSection);
+    }
+
+    const isPlaying = roomState && roomState.status === "playing";
+
+    if (isPlaying) {
+        // W trakcie gry: Ukryj Zasady Rozgrywki, przenieś Czat na prawy panel nad Twoje Dzielnice!
+        settingsCard.classList.add("hidden");
+        if (chatCard.parentElement !== rightPanel) {
+            chatCard.classList.add("chat-card-in-right");
+            rightPanel.insertBefore(chatCard, ownedSection);
+        }
+    } else {
+        // W Lobby: Pokaż Zasady Rozgrywki po prawej, a Czat trzymaj w lewej kolumnie
+        settingsCard.classList.remove("hidden");
+        if (chatCard.parentElement !== leftPanel) {
+            chatCard.classList.remove("chat-card-in-right");
+            leftPanel.appendChild(chatCard);
+        }
+    }
+}
+
+// 3. PRAWDZIWE KARTY "NIESPODZIANKA" (❓) ORAZ "SKARB ŚLĄSKI" (📦) + POWIADOMIENIA
+processLanding = function(player, tile, posIdx, boardData) {
+    if (!roomState.props) roomState.props = {};
+    const pState = roomState.props[posIdx];
+    const isMe = player.id === myId;
+
+    // A. PODATKI
+    if (tile.type === "tax") {
+        player.cash -= tile.amount;
+        if (roomState.settings?.vacationCash) roomState.pot = (roomState.pot || 0) + tile.amount;
+        broadcastToast("💸 Podatek!", `${player.nick} płaci ${tile.name}: -${tile.amount}$`, "💸", "#ef4444");
+        return `Płaci ${tile.name} (-${tile.amount}$).`;
+    }
+
+    // B. WAKACJE (BURLOCH)
+    if (tile.type === "parking") {
+        if (roomState.settings?.vacationCash && roomState.pot > 0) {
+            const won = roomState.pot;
+            player.cash += won;
+            roomState.pot = 0;
+            broadcastToast("🏖️ Pula z Burlochu!", `${player.nick} zgarnia całą pulę z Wakacji: +${won}$!`, "🎉", "#22c55e");
+            return `Zgarnia pulę z Wakacji na Burlochu: +${won}$! 🎉`;
+        }
+        return `Odpoczywa na Burloch Arenie.`;
+    }
+
+    // C. IDŹ DO WIĘZIENIA
+    if (tile.type === "gotojail") {
+        const jailIdx = boardData.findIndex(t => t.type === "jail");
+        player.pos = jailIdx >= 0 ? jailIdx : 10;
+
+        // Sprawdź, czy gracz ma kartę "Wyjście z Więzienia za darmo"!
+        if ((player.jailCards || 0) > 0) {
+            player.jailCards -= 1;
+            player.inJail = 0;
+            broadcastToast("🎟️ Użyto karty!", `${player.nick} miał trafić na Izbę, ale używa karty "Wyjście z Więzienia za darmo"!`, "🎟️", "#10b981");
+            return `Trafia na Izbę, ale od razu wychodzi dzięki darmowej karcie 🎟️!`;
+        }
+
+        player.inJail = 1;
+        broadcastToast("🚔 Idziesz do Więzienia!", `${player.nick} jedzie prosto na Izbę Wytrzeźwień!`, "⛓️", "#ef4444");
+        return `Jedzie prosto do Więzienia! 🚔`;
+    }
+
+    // D. NIESPODZIANKA (❓) ORAZ SKARB ŚLĄSKI (📦) - ROZBUDOWANA TALIA KART!
+    if (tile.type === "chance" || tile.type === "chest") {
+        const activePlayers = getActivePlayers();
+        const jailIdx = boardData.findIndex(t => t.type === "jail");
+        const ratuszIdx = boardData.findIndex(t => t.name.includes("Ratusz"));
+        const aquadromIdx = boardData.findIndex(t => t.name.includes("Aquadrom"));
+        const chebzieIdx = boardData.findIndex(t => t.type === "station");
+
+        const cardsDeck = [
+            {
+                title: "🎟️ Wyjście z Więzienia za darmo!",
+                icon: "🎟️",
+                color: "#10b981",
+                run: () => {
+                    player.jailCards = (player.jailCards || 0) + 1;
+                    return `Otrzymuje kartę <strong>"Wyjście z Więzienia za darmo"</strong> 🎟️!`;
+                }
+            },
+            {
+                title: "🎂 Masz dzisiaj Urodziny!",
+                icon: "🎂",
+                color: "#ec4899",
+                run: () => {
+                    let collected = 0;
+                    activePlayers.forEach(other => {
+                        if (other.id !== player.id) {
+                            const oRef = roomState.players[other.id];
+                            if (oRef) {
+                                oRef.cash -= 50;
+                                player.cash += 50;
+                                collected += 50;
+                            }
+                        }
+                    });
+                    return `Urodziny! Każdy gracz wręcza prezent po 50$ (łącznie +${collected}$)! 🎂`;
+                }
+            },
+            {
+                title: "🍻 Stawiasz kolejkę znajomym!",
+                icon: "🍻",
+                color: "#f97316",
+                run: () => {
+                    let paidTotal = 0;
+                    activePlayers.forEach(other => {
+                        if (other.id !== player.id) {
+                            const oRef = roomState.players[other.id];
+                            if (oRef) {
+                                player.cash -= 30;
+                                oRef.cash += 30;
+                                paidTotal += 30;
+                            }
+                        }
+                    });
+                    return `Stawia kolejkę wszystkim graczom po 30$ (łącznie -${paidTotal}$)! 🍻`;
+                }
+            },
+            {
+                title: "🏁 Ekspres na START!",
+                icon: "🏁",
+                color: "#22c55e",
+                run: () => {
+                    player.pos = 0;
+                    player.cash += 200;
+                    return `Przechodzi prosto na pole <strong>START</strong> i zgarnia +200$! 🏁`;
+                }
+            },
+            {
+                title: "🏛️ Wizyta w Ratuszu!",
+                icon: "🏛️",
+                color: "#3b82f6",
+                run: () => {
+                    const target = ratuszIdx >= 0 ? ratuszIdx : (boardData.length - 1);
+                    player.pos = target;
+                    const subRes = processLanding(player, boardData[target], target, boardData);
+                    return `Idzie prosto na pole <strong>${boardData[target].name}</strong>! ${subRes}`;
+                }
+            },
+            {
+                title: "🏊 Wycieczka na Aquadrom!",
+                icon: "🏊",
+                color: "#0ea5e9",
+                run: () => {
+                    const target = aquadromIdx >= 0 ? aquadromIdx : 15;
+                    if (target < posIdx) player.cash += 200; // Mija Start po drodze
+                    player.pos = target;
+                    const subRes = processLanding(player, boardData[target], target, boardData);
+                    return `Jedzie na <strong>${boardData[target].name}</strong>! ${subRes}`;
+                }
+            },
+            {
+                title: "✈️ Lot z Dworca Chebzie!",
+                icon: "✈️",
+                color: "#38bdf8",
+                run: () => {
+                    const target = chebzieIdx >= 0 ? chebzieIdx : 5;
+                    if (target < posIdx) player.cash += 200;
+                    player.pos = target;
+                    const subRes = processLanding(player, boardData[target], target, boardData);
+                    return `Przenosi się na stację <strong>${boardData[target].name}</strong>! ${subRes}`;
+                }
+            },
+            {
+                title: "🚔 Kontrola drogowa – na Izbę!",
+                icon: "🚔",
+                color: "#ef4444",
+                run: () => {
+                    if ((player.jailCards || 0) > 0) {
+                        player.jailCards -= 1;
+                        return `Miał trafić do więzienia, ale wykorzystuje kartę darmowego wyjścia 🎟️!`;
+                    }
+                    player.pos = jailIdx >= 0 ? jailIdx : 10;
+                    player.inJail = 1;
+                    return `Karta wysyła gracza prosto do Więzienia (Izba)! ⛓️`;
+                }
+            },
+            {
+                title: "💰 Zwrot podatku ze Skarbówki!",
+                icon: "💰",
+                color: "#22c55e",
+                run: () => {
+                    player.cash += 150;
+                    return `Otrzymuje zwrot podatku: <strong>+150$</strong>!`;
+                }
+            },
+            {
+                title: "📸 Fotoradar na DTŚ!",
+                icon: "📸",
+                color: "#ef4444",
+                run: () => {
+                    player.cash -= 100;
+                    if (roomState.settings?.vacationCash) roomState.pot = (roomState.pot || 0) + 100;
+                    return `Mandat z fotoradaru na DTŚ: <strong>-100$</strong> (trafia do puli Burloch)!`;
+                }
+            }
+        ];
+
+        const drawn = cardsDeck[Math.floor(Math.random() * cardsDeck.length)];
+        const resultText = drawn.run();
+        broadcastToast(`${tile.name}: ${drawn.title}`, `${player.nick}: ${resultText.replace(/<[^>]*>?/gm, '')}`, drawn.icon, drawn.color);
+        return `🃏 [${drawn.title}] ${resultText}`;
+    }
+
+    // E. ZWYKŁE POLA (DZIELNICE, STACJE, MEDIA)
+    if (tile.type === "prop" || tile.type === "station" || tile.type === "utility") {
+        // 1. Pole należy do innego gracza -> Płacisz czynsz
+        if (pState && pState.owner !== player.id) {
+            const owner = roomState.players[pState.owner];
+            if (owner && !owner.bankrupt) {
+                if (roomState.settings?.noPrisonRent && owner.inJail > 0) {
+                    broadcastToast("⛓️ Brak czynszu!", `Właściciel (${owner.nick}) siedzi w więzieniu – ${player.nick} nie płaci!`, "⛓️", "#94a3b8");
+                    return `Właściciel (${owner.nick}) siedzi w więzieniu – brak czynszu!`;
+                }
+
+                let finalRent = 0;
+                if (tile.type === "station") {
+                    const sIdx = boardData.map((t, i) => t.type === "station" ? i : -1).filter(i => i !== -1);
+                    const count = sIdx.filter(i => roomState.props[i]?.owner === owner.id).length;
+                    finalRent = [0, 50, 150, 250, 400][Math.min(count, 4)] || 50;
+                } else if (tile.type === "utility") {
+                    const uIdx = boardData.map((t, i) => t.type === "utility" ? i : -1).filter(i => i !== -1);
+                    const count = uIdx.filter(i => roomState.props[i]?.owner === owner.id).length;
+                    const diceSum = (roomState.dice ? roomState.dice[0] + roomState.dice[1] : 7);
+                    finalRent = diceSum * (count >= 2 ? 10 : 5);
+                } else if (tile.type === "prop") {
+                    const rSet = tile.rentSet || [10, 50, 150, 450, 625, 750];
+                    const houses = pState.houses || 0;
+                    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+                    if (houses === 0) {
+                        finalRent = rSet[0];
+                        const gIdx = boardData.map((t, i) => t.group === tile.group ? i : -1).filter(i => i !== -1);
+                        if (gIdx.every(i => roomState.props[i]?.owner === owner.id) && roomState.settings?.doubleRent) {
+                            finalRent *= 2;
+                        }
+                    } else {
+                        finalRent = rSet[houses > maxH ? 5 : Math.min(houses, 4)] || rSet[1];
+                    }
+                }
+
+                player.cash -= finalRent;
+                owner.cash += finalRent;
+                broadcastToast("💸 Opłata czynszu!", `${player.nick} płaci ${finalRent}$ czynszu dla gracza ${owner.nick} (pole ${tile.name})!`, "💸", "#f59e0b");
+                return `Płaci <strong>${finalRent}$</strong> czynszu dla ${owner.nick}!`;
+            }
+        }
+        // 2. Pole jest WOLNE -> Powiadomienie dla gracza, że może je kupić!
+        else if (!pState) {
+            if (isMe && player.cash >= tile.price) {
+                showGameToast(
+                    `💰 Możesz kupić: ${tile.name}!`,
+                    `Koszt: ${tile.price}$. Najedź myszką lub kliknij bezpośrednio na to pole na planszy, aby je kupić!`,
+                    "🏘️",
+                    "#22c55e",
+                    5000
+                );
+            }
+            return `Wolne pole (${tile.price}$) – kliknij na pole na mapie, aby kupić!`;
+        }
+        // 3. Gracz staje na WŁASNYM polu -> Powiadomienie jeśli może postawić domek/hotel!
+        else if (pState && pState.owner === player.id) {
+            if (isMe && canBuildHouseHere(player.id, posIdx, boardData)) {
+                showGameToast(
+                    `🏠 Możesz rozbudować: ${tile.name}!`,
+                    `Kliknij na swoje pole na planszy, aby postawić domek lub hotel za ${tile.house}$!`,
+                    "🏠",
+                    "#d97706",
+                    5000
+                );
+            }
+            return `Staje na własnej dzielnicy ${tile.name}.`;
+        }
+    }
+
+    return `Staje na polu ${tile.name}.`;
+};
+
+// 4. Rozszerzenie głównego odświeżania o odbieranie powiadomień (toastów), odznakę karty więzienia i chowanie Zasad
+const prevRenderBeforeToastsAndLayout = renderRichupScreen;
+renderRichupScreen = function() {
+    prevRenderBeforeToastsAndLayout();
+    setupDynamicRightPanelLayout();
+
+    if (!roomState) return;
+
+    // A. Wyświetl nowe powiadomienie z Firebase (jeśli jeszcze go nie widzieliśmy)
+    const notif = roomState.lastNotification;
+    if (notif && notif.id && notif.id !== lastSeenNotificationId) {
+        lastSeenNotificationId = notif.id;
+        showGameToast(notif.title, notif.message, notif.icon, notif.color);
+    }
+
+    // B. Dopisz ikonkę karty "Wyjście z Więzienia" (🎟️) przy graczach, którzy ją wylosowali
+    const allPlayers = getOrderedPlayers();
+    const amIHost = isMeRoomHost();
+    const isPlaying = roomState.status === "playing";
+    const monoList = document.getElementById("players-list-right");
+
+    if (monoList) {
+        monoList.innerHTML = allPlayers.map(p => {
+            const canTradeWith = isPlaying && p.id !== myId && !p.bankrupt && !roomState.players?.[myId]?.bankrupt;
+            const jailCardsCount = p.jailCards || 0;
+            return `
+                <div class="p-row" style="opacity:${p.bankrupt ? 0.4 : 1}">
+                    <div class="p-left">
+                        <div class="p-dot" style="background:${p.color}"></div>
+                        <strong>${p.nick}</strong>
+                        ${p.id === roomState.hostId ? `<span class="host-crown">👑 Host</span>` : ``}
+                        ${jailCardsCount > 0 ? `<span class="jail-card-badge" title="Karta: Wyjście z Więzienia za darmo">🎟️x${jailCardsCount}</span>` : ``}
+                        ${p.bankrupt ? `<span style="color:#ef4444;font-size:11px;">BANKRUT</span>` : ``}
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <strong>$${p.cash}</strong>
+                        ${canTradeWith ? `<button class="btn-trade-mini" onclick="openTradeModalWith('${p.id}')" title="Zaproponuj wymianę">🤝</button>` : ``}
+                        ${amIHost && p.id !== myId ? `<button class="btn-kick" onclick="hostKickPlayer('${p.id}')" title="Wyrzuć z gry (Tylko Host)">🥾</button>` : ``}
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+};
