@@ -3694,3 +3694,67 @@ sendTradeOfferNow = async function() {
         isDraggingChat = false;
     });
 })();
+// =====================================================
+// BLOKADA RUCHU NA UJEMNYM SALDZIE (MUSISZ WYJŚĆ NA PLUS)
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+const prevRollDiceNowBeforeDebtCheck = rollDiceNow;
+rollDiceNow = async function() {
+    if (!roomState || roomState.status !== "playing") return;
+    const activePlayers = getActivePlayers();
+    if (activePlayers.length === 0) return;
+
+    const currIdx = roomState.turnIdx % activePlayers.length;
+    const currP = activePlayers[currIdx];
+
+    if (!currP || currP.id !== myId) {
+        alert("To nie Twoja tura!");
+        return;
+    }
+
+    const playerObj = roomState.players[myId];
+    // Sprawdzamy, czy gracz ma ujemne saldo
+    if (playerObj && (Number(playerObj.cash) || 0) < 0) {
+        const debt = Math.abs(playerObj.cash);
+        alert(`❌ Masz długi! Stan konta wynosi -$${debt}. Nie możesz rzucić kostką, dopóki nie wyjdziesz na plus (sprzedaj domki, pole lub handluj z innymi)!`);
+        return;
+    }
+
+    await prevRollDiceNowBeforeDebtCheck();
+};
+
+// Blokada dla ruchu bota, jeśli ma długi (bot automatycznie wyprzedaje domki lub stoi w miejscu)
+const prevRunBotTurnBeforeDebtBlock = runBotTurn;
+runBotTurn = async function(botObj) {
+    if (!roomState || roomState.status !== "playing") return;
+    const bot = roomState.players?.[botObj.id];
+
+    if (bot && (Number(bot.cash) || 0) < 0) {
+        const props = roomState.props || {};
+        const botProps = Object.keys(props).filter(k => props[k].owner === bot.id);
+        
+        let soldSomething = false;
+        for (const pKey of botProps) {
+            if (props[pKey].houses > 0) {
+                props[pKey].houses -= 1;
+                const boardData = getCurrentBoard();
+                const refund = Math.floor((boardData[pKey]?.house || 50) / 2);
+                bot.cash += refund;
+                soldSomething = true;
+                addHistoryEntry(`🤖 ${bot.nick} ma długi i ratuje się sprzedażą domku z ${boardData[pKey].name} (+${refund}$).`, bot.color);
+                break;
+            }
+        }
+
+        // Jeśli bot sprzedał wszystko, a nadal ma długi i minęła tura -> pomija ruch w tej turze
+        if (!soldSomething && bot.cash < 0) {
+            addHistoryEntry(`🤖 ${bot.nick} stoi w miejscu z powodu ujemnego salda (dług: -$${Math.abs(bot.cash)}).`, bot.color);
+            roomState.turnIdx = (roomState.turnIdx + 1) % getActivePlayers().length;
+            await pushState();
+            return;
+        }
+    }
+
+    await prevRunBotTurnBeforeDebtBlock(botObj);
+};
