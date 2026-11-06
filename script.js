@@ -3409,3 +3409,91 @@ renderRichupScreen = function() {
     }
     prevRenderBeforeOrphanCleanup();
 };
+// =====================================================
+// SYSTEM SPRZEDAŻY DOMKÓW ZA POŁOWĘ CENY
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+// 1. Funkcja obsługująca sprzedaż pojedynczego domku z danej dzielnice
+async function sellHouseOnIndex(idx) {
+    if (!roomState || !roomState.props) return;
+    const pState = roomState.props[idx];
+    if (!pState || pState.owner !== myId) return;
+
+    const housesCount = pState.houses || 0;
+    if (housesCount <= 0) {
+        alert("Na tym polu nie ma żadnych domków do sprzedaży!");
+        return;
+    }
+
+    const boardData = getCurrentBoard();
+    const tile = boardData[idx];
+    const me = roomState.players[myId];
+    if (!tile || !me) return;
+
+    // Cena pojedynczego domku (bazowa z definicji pola)
+    const houseCost = tile.house || 50;
+    const refund = Math.floor(houseCost / 2);
+
+    // Zmniejsz liczbę domków o 1 i oddaj graczowi 50% kasy
+    pState.houses = housesCount - 1;
+    me.cash += refund;
+
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+    const statusLabel = pState.houses > maxH ? "🏨 Hotel" : (pState.houses === 0 ? "brak domków" : `${pState.houses} domki 🏠`);
+
+    addHistoryEntry(
+        `💸 <strong>${me.nick}</strong> sprzedaje 1 domek z pola <strong>${tile.name}</strong> za połowę ceny (+${refund}$). Pozostało: ${statusLabel}.`,
+        me.color
+    );
+
+    await pushState();
+}
+
+// 2. Nadpisujemy funkcję renderującą Twoje dzielnice po prawej stronie, żeby dodać przycisk "-🏠 Sprzedaj"
+const prevRenderMyOwnedPropsBeforeHouseSell = renderMyOwnedProps;
+renderMyOwnedProps = function(boardData, currP) {
+    if (typeof prevRenderMyOwnedPropsBeforeHouseSell === "function") {
+        // Wywołujemy oryginalną strukturę, żeby nie popsuć przycisków zakupu/sprzedaży działki
+        // (nadpisujemy tylko zawartość boxa, żeby wstawić przycisk sprzedaży domków)
+    }
+
+    const box = document.getElementById("my-owned-list");
+    if (!box || !roomState) return;
+    const props = roomState.props || {};
+    const myIndices = Object.keys(props).filter(i => props[i].owner === myId);
+
+    if (myIndices.length === 0) {
+        box.innerHTML = "Brak zakupionych pól.";
+        return;
+    }
+
+    const isMyTurn = currP && currP.id === myId && roomState.rolledThisTurn;
+    const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+
+    box.innerHTML = myIndices.map(i => {
+        const idx = parseInt(i);
+        const t = boardData[idx];
+        if (!t) return "";
+
+        const h = props[idx].houses || 0;
+        const hIcons = h > maxH ? "🏨 HOTEL" : (h > 0 ? "🏠".repeat(h) : "Brak domków");
+        const canBuild = isMyTurn && canBuildHouseHere(myId, idx, boardData);
+        const canSellHouse = h > 0; // Można sprzedawać domki, jeśli jakiekolwiek stoją na polu
+        const houseRefund = Math.floor((t.house || 50) / 2);
+
+        return `
+            <div class="owned-item" style="flex-direction:column; align-items:flex-start; gap:4px; padding:8px;">
+                <div style="display:flex; justify-content:space-between; width:100%;">
+                    <span><strong style="color:${t.color || '#38bdf8'}">■</strong> <strong>${t.name}</strong></span>
+                    <span style="font-size:12px;">${hIcons}</span>
+                </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; width:100%; justify-content:flex-end; margin-top:2px;">
+                    ${canSellHouse ? `<button class="btn-dark-sm" style="background:#7c3aed; color:#fff;" onclick="sellHouseOnIndex(${idx})" title="Odzyskaj 50% ceny domku">-🏠 Sprzedaj dom (+${houseRefund}$)</button>` : ``}
+                    ${canBuild ? `<button class="btn-dark-sm" style="background:#d97706" onclick="buildHouseOnIndex(${idx})">+🏠 (${t.house}$)</button>` : ``}
+                    ${roomState.settings?.mortgage ? `<button class="btn-dark-sm" onclick="sellPropertyToBank(${idx})">Sprzedaj pole (+${Math.floor(t.price/2)}$)</button>` : ``}
+                </div>
+            </div>
+        `;
+    }).join("");
+};
