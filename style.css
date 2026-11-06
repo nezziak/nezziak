@@ -1309,3 +1309,164 @@ body {
     transition: none !important;
     user-select: none !important;
 }
+
+/* ====================================================
+   SYSTEM WYMIAN (TRADE MODAL) + BLOKADY DLA GOŚCI (NIE-HOSTA)
+   ==================================================== */
+
+/* Przycisk proponowania wymiany na liście graczy */
+.btn-trade-mini {
+    background: #6d28d9;
+    color: #ffffff;
+    border: 1px solid #a78bfa;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: transform 0.12s, background 0.15s;
+}
+.btn-trade-mini:hover {
+    background: #7c3aed;
+    transform: scale(1.08);
+}
+
+/* Tło pod okienkiem wymiany */
+.trade-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 8, 18, 0.82);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+/* Główne okno wymiany */
+.trade-modal-card {
+    background: #1b1828;
+    border: 2px solid #8b5cf6;
+    border-radius: 14px;
+    width: 94%;
+    max-width: 680px;
+    padding: 18px 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    color: #f8fafc;
+}
+
+.trade-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #322c47;
+    padding-bottom: 10px;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.trade-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.trade-col {
+    background: #13111c;
+    border: 1px solid #2e2942;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trade-col-title {
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #262138;
+}
+
+.trade-cash-input {
+    width: 100%;
+    background: #1d192b;
+    border: 1px solid #4c3f70;
+    color: #fde047;
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.trade-props-box {
+    max-height: 170px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-right: 4px;
+}
+
+.trade-prop-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1d192b;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    user-select: none;
+}
+.trade-prop-item:hover {
+    border-color: #6d28d9;
+}
+.trade-prop-item input[type="checkbox"] {
+    accent-color: #8b5cf6;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
+.trade-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #322c47;
+    padding-top: 10px;
+}
+
+/* Okienko przychodzącej oferty dla drugiego gracza */
+.incoming-trade-banner {
+    background: linear-gradient(135deg, #2e1065, #1e1b4b);
+    border: 2px solid #fde047;
+    border-radius: 12px;
+    padding: 16px;
+    width: 92%;
+    max-width: 520px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+}
+
+.incoming-trade-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.35);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
