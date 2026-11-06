@@ -1564,3 +1564,42 @@ body {
     font-weight: 800;
     margin-left: 4px;
 }
+/* ====================================================
+   KOMPAKTOWY CZAT Z MOŻLIWOŚCIĄ PRZESUWANIA I ROZCIĄGANIA + WERSJA GRY
+   ==================================================== */
+
+/* Pudełko czatu po prawej stronie z możliwością płynnej zmiany rozmiaru w pionie */
+.chat-card-in-right {
+    position: relative !important;
+    height: 195px !important;
+    min-height: 120px !important;
+    max-height: 380px !important;
+    resize: vertical !important;
+    overflow: hidden !important;
+}
+
+.chat-card-in-right .card-title {
+    cursor: grab !important;
+    user-select: none !important;
+}
+.chat-card-in-right .card-title:active {
+    cursor: grabbing !important;
+}
+
+/* Etykieta wersji gry w prawym rogu ekranu */
+.game-version-badge {
+    position: fixed;
+    bottom: 12px;
+    right: 16px;
+    background: rgba(19, 17, 28, 0.85);
+    border: 1px solid #3b3354;
+    color: #a78bfa;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    z-index: 4000;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
