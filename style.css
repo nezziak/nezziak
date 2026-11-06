@@ -1470,3 +1470,97 @@ body {
     border-radius: 8px;
     font-size: 12px;
 }
+
+/* ====================================================
+   POWIADOMIENIA NA ŻYWO (TOASTY) + UKŁAD GRY BEZ ZASAD PO PRAWEJ
+   ==================================================== */
+
+/* Kontener wyskakujących powiadomień u góry ekranu */
+#rsl-toast-container {
+    position: fixed;
+    top: 66px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+    width: 92%;
+    max-width: 480px;
+}
+
+.rsl-toast {
+    background: linear-gradient(135deg, #1e1b4b, #13111c);
+    border: 2px solid #8b5cf6;
+    border-left-width: 7px;
+    color: #f8fafc;
+    padding: 11px 16px;
+    border-radius: 12px;
+    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.9);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    pointer-events: auto;
+    animation: toastSlideDown 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rsl-toast-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.rsl-toast-body {
+    flex: 1;
+}
+
+.rsl-toast-title {
+    font-weight: 800;
+    font-size: 13.5px;
+    color: #fde047;
+    margin-bottom: 2px;
+}
+
+@keyframes toastSlideDown {
+    from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Gdy gra trwa: układ kompaktowy po prawej (Czat + Twoje Dzielnice pod nim) */
+.right-panel .chat-card-in-right {
+    height: 230px !important;
+    min-height: 210px !important;
+    max-height: 250px !important;
+    flex: 0 0 auto !important;
+}
+
+.owned-card-standalone {
+    background: #1d192b;
+    border: 1px solid #2e2942;
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-height: 150px;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+/* Odznaka karty Wyjścia z Więzienia przy graczu */
+.jail-card-badge {
+    background: #065f46;
+    color: #6ee7b7;
+    border: 1px solid #10b981;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    margin-left: 4px;
+}
