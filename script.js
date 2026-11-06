@@ -3189,3 +3189,223 @@ renderRichupScreen = function() {
         }).join("");
     }
 };
+
+// =====================================================
+// AUTOMATYCZNE ZWALNIANIE PÓL PO BANKRUCTWIE LUB WYJŚCIU GRACZA
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+// 1. Funkcja "Odkurzacz" – usuwa osierocone pola (gdy właściciel wyszedł, zamknął kartę lub zbankrutował)
+function cleanupOrphanedProperties() {
+    if (!roomState || !roomState.props) return false;
+    const players = roomState.players || {};
+    let changed = false;
+
+    Object.keys(roomState.props).forEach(posKey => {
+        const pState = roomState.props[posKey];
+        if (!pState) return;
+
+        const owner = players[pState.owner];
+        // Jeśli właściciela nie ma już w pokoju ALBO jest oznaczony jako bankrut -> zwolnij pole!
+        if (!owner || owner.bankrupt) {
+            delete roomState.props[posKey];
+            changed = true;
+        }
+    });
+
+    return changed;
+}
+
+// 2. Poprawione wyjście z lobby (🚪 Wyjdź) – od razu zwalnia wszystkie kupione pola gracza!
+leaveCurrentLobby = async function(silent = false) {
+    if (!silent && roomState && roomState.players && roomState.players[myId] && currentRoom) {
+        const leavingNick = roomState.players[myId].nick || myNick;
+
+        // Zwolnij wszystkie pola opuszczającego gracza, żeby inni mogli je normalnie kupić
+        if (roomState.props) {
+            Object.keys(roomState.props).forEach(posKey => {
+                if (roomState.props[posKey]?.owner === myId) {
+                    delete roomState.props[posKey];
+                }
+            });
+        }
+
+        delete roomState.players[myId];
+        cleanupOrphanedProperties();
+
+        // Napraw kolejkę tur, jeśli wychodzący gracz miał teraz swoją turę
+        const remActive = getActivePlayers();
+        if (remActive.length > 0) {
+            roomState.turnIdx = roomState.turnIdx % remActive.length;
+            roomState.rolledThisTurn = false;
+        } else {
+            roomState.status = "lobby";
+        }
+
+        addHistoryEntry(`🚪 <strong>${leavingNick}</strong> opuścił(a) grę! Wszystkie jego dzielnice są znów wolne do zakupu.`, "#94a3b8");
+        broadcastToast("🚪 Gracz wyszedł!", `${leavingNick} opuścił grę – jego dzielnice można teraz normalnie kupić!`, "🏘️", "#38bdf8");
+
+        await fetch(`${FIREBASE_URL}richup_rooms/${currentRoom}.json`, {
+            method: "PUT",
+            body: JSON.stringify(roomState)
+        });
+    }
+
+    if (pollTimer) clearInterval(pollTimer);
+    Object.values(animTimers).forEach(t => clearInterval(t));
+    animTimers = {};
+    visualPositions = {};
+    isHoppingMap = {};
+
+    isInLobbyRoom = false;
+    roomState = null;
+    currentRoom = "";
+    setLobbyUIState(false, "");
+
+    const monoList = document.getElementById("players-list-right");
+    if (monoList) {
+        monoList.innerHTML = `<div class="small-label" style="text-align:center; padding:12px;">Najpierw <strong>Stwórz Lobby</strong> lub <strong>Dołącz do znajomego</strong> w panelu po lewej stronie!</div>`;
+    }
+    document.getElementById("players-count-label").innerText = "0";
+    document.getElementById("turn-status-text").innerText = "Brak aktywnego Lobby – wybierz opcję po lewej stronie";
+    document.getElementById("center-room-label").innerText = "BRAK (Stwórz lub Dołącz po lewej)";
+
+    const logBox = document.getElementById("action-log-box");
+    if (logBox) {
+        logBox.innerHTML = `<div class="history-row">👈 Kliknij po lewej stronie <strong>"➕ Stwórz własne Lobby"</strong> albo <strong>"🔑 Dołącz do znajomego"</strong>, aby rozpocząć!</div>`;
+    }
+};
+
+// 3. Poprawione bankructwo – czyści pola do zera i powiadamia innych, że działki są do wzięcia!
+declareBankrupt = async function(pid) {
+    if (!roomState || !roomState.players) return;
+    const p = roomState.players[pid];
+    if (!p) return;
+
+    p.bankrupt = true;
+    p.cash = 0;
+
+    if (roomState.props) {
+        Object.keys(roomState.props).forEach(k => {
+            if (roomState.props[k]?.owner === pid) {
+                delete roomState.props[k];
+            }
+        });
+    }
+    cleanupOrphanedProperties();
+
+    const rem = getActivePlayers();
+    if (rem.length === 1) {
+        addHistoryEntry(`🏆 KONIEC GRY! Wygrywa <strong>${rem[0].nick}</strong>! Kliknij Reset do Ustawień, aby zagrać ponownie.`, rem[0].color);
+        broadcastToast("🏆 Mamy Zwycięzcę!", `Gracz ${rem[0].nick} wygrywa całą partię Monopoly RSL!`, "🏆", "#fde047");
+    } else {
+        roomState.rolledThisTurn = false;
+        roomState.housesThisTurn = 0;
+        roomState.turnIdx = roomState.turnIdx % Math.max(1, rem.length);
+        addHistoryEntry(`🏳️ <strong>${p.nick}</strong> bankrutuje! Wszystkie jego dzielnice są znów wolne i można je kupić!`, "#ef4444");
+        broadcastToast("🏳️ Bankructwo!", `${p.nick} odpada z gry! Jego dzielnice wróciły na mapę jako wolne pola do zakupu!`, "🏘️", "#ef4444");
+    }
+    await pushState();
+};
+
+// 4. Aktualizacja dymku (tooltipa) nad polem – nigdy więcej napisu "Właściciel: Bank"!
+getTileTooltipHTML = function(tile, propState, idx = -1, boardData = MAP_40) {
+    let html = "";
+
+    // Sprawdzamy, czy pole ma PRAWDZIWEGO, aktywnego właściciela w grze
+    const realOwner = (propState && roomState?.players && roomState.players[propState.owner] && !roomState.players[propState.owner].bankrupt)
+        ? roomState.players[propState.owner]
+        : null;
+
+    // Jeśli nie ma prawdziwego właściciela, traktujemy pole jako 100% wolne!
+    const validPropState = realOwner ? propState : null;
+
+    if (tile.type === "station") {
+        html = `<div class="tooltip-title">${tile.name} (Stacja)</div>
+                <div class="tooltip-row"><span>Cena zakupu:</span><strong>${tile.price || 200}$</strong></div>
+                <div class="tooltip-row"><span>1 stacja:</span><strong>50$</strong></div>
+                <div class="tooltip-row"><span>2 stacje:</span><strong>150$</strong></div>
+                <div class="tooltip-row"><span>3 stacje:</span><strong>250$</strong></div>
+                <div class="tooltip-row"><span>4 stacje:</span><strong>400$</strong></div>`;
+    } else if (tile.type === "utility") {
+        html = `<div class="tooltip-title">${tile.name} (Media)</div>
+                <div class="tooltip-row"><span>Cena zakupu:</span><strong>${tile.price || 150}$</strong></div>
+                <div style="font-size:10.5px; color:#94a3b8; margin-top:3px;">1 obiekt: Rzut kośćmi x 5<br>2 obiekty: Rzut kośćmi x 10</div>`;
+    } else if (tile.type === "prop") {
+        const price = tile.price || 100;
+        const houseCost = tile.house || 50;
+        const r = tile.rentSet || [10, 50, 150, 450, 625, 750];
+
+        html = `<div class="tooltip-title">${tile.name}</div>`;
+        html += `<div class="tooltip-row"><span>Cena zakupu:</span><strong>${price}$</strong></div>`;
+        html += `<div class="tooltip-row"><span>Cena domku:</span><strong>${houseCost}$</strong></div>`;
+        html += `<div class="tooltip-row" style="border-top:1px solid #3b3354; margin-top:3px; padding-top:3px;"><span>Czynsz bazowy:</span><strong>${r[0]}$</strong></div>`;
+        html += `<div class="tooltip-row"><span>🏠 1 domek:</span><strong>${r[1]}$</strong></div>`;
+        html += `<div class="tooltip-row"><span>🏠🏠 2 domki:</span><strong>${r[2]}$</strong></div>`;
+        html += `<div class="tooltip-row"><span>🏠🏠🏠 3 domki:</span><strong>${r[3]}$</strong></div>`;
+        html += `<div class="tooltip-row"><span>🏠🏠🏠🏠 4 domki:</span><strong>${r[4]}$</strong></div>`;
+        html += `<div class="tooltip-row" style="color:#fde047;"><span>🏨 Hotel:</span><strong>${r[5]}$</strong></div>`;
+    } else {
+        return `<div class="tooltip-title">${tile.name}</div><div>Pole specjalne</div>`;
+    }
+
+    if (realOwner && validPropState) {
+        const hCnt = validPropState.houses || 0;
+        const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+        const statusStr = hCnt > maxH ? "🏨 Hotel" : (hCnt === 0 ? "Brak zabudowy" : "🏠".repeat(hCnt));
+        html += `<div style="margin-top:4px; border-top:1px dashed #475569; padding-top:3px; color:${realOwner.color}">Właściciel: <strong>${realOwner.nick}</strong> (${statusStr})</div>`;
+    } else {
+        html += `<div style="margin-top:4px; border-top:1px dashed #475569; padding-top:3px; color:#22c55e; font-weight:700;">🟢 WOLNE POLE (Można kupić!)</div>`;
+    }
+
+    // Przycisk kupna pola lub domku bezpośrednio w dymku nad kafelkiem
+    if (roomState && roomState.status === "playing" && idx >= 0) {
+        const activePlayers = getActivePlayers();
+        const currP = activePlayers.length > 0 ? activePlayers[roomState.turnIdx % activePlayers.length] : null;
+        const isMyTurn = currP && currP.id === myId && roomState.rolledThisTurn;
+
+        if (isMyTurn) {
+            const myPos = Number(currP.pos) || 0;
+            const canBuyThisProp = !validPropState && myPos === idx && (tile.type === "prop" || tile.type === "station" || tile.type === "utility") && currP.cash >= tile.price;
+            const canBuildThisHouse = canBuildHouseHere(myId, idx, boardData);
+
+            if (canBuyThisProp) {
+                html += `<button class="tooltip-buy-btn tooltip-buy-prop" onclick="event.stopPropagation(); buyPropertyOnTile(${idx})">💰 Kup pole (${tile.price}$)</button>`;
+            }
+            if (canBuildThisHouse) {
+                const maxH = roomState?.settings?.maxHousesBeforeHotel || 4;
+                const nextH = (validPropState?.houses || 0) + 1;
+                const btnLabel = nextH > maxH ? `🏨 Kup Hotel (${tile.house}$)` : `🏠 Kup domek #${nextH} (${tile.house}$)`;
+                html += `<button class="tooltip-buy-btn tooltip-buy-house" onclick="event.stopPropagation(); buildHouseOnIndex(${idx})">${btnLabel}</button>`;
+            }
+        }
+    }
+
+    return html;
+};
+
+// 5. Przed każdym wejściem na pole i każdym odświeżeniem ekranu automatycznie czyścimy porzucone działki!
+const prevProcessLandingBeforeCleanup = processLanding;
+processLanding = function(player, tile, posIdx, boardData) {
+    cleanupOrphanedProperties();
+    return prevProcessLandingBeforeCleanup(player, tile, posIdx, boardData);
+};
+
+const prevBuyOnTileBeforeCleanup = buyPropertyOnTile;
+buyPropertyOnTile = async function(targetIdx) {
+    cleanupOrphanedProperties();
+    await prevBuyOnTileBeforeCleanup(targetIdx);
+};
+
+const prevRenderBeforeOrphanCleanup = renderRichupScreen;
+renderRichupScreen = function() {
+    if (roomState) {
+        const cleaned = cleanupOrphanedProperties();
+        if (cleaned && isMeRoomHost() && !isSavingNow) {
+            // Host automatycznie zapisuje w bazie oczyszczone pola po graczach, którzy zamknęli przeglądarkę
+            pushState();
+            return;
+        }
+    }
+    prevRenderBeforeOrphanCleanup();
+};
