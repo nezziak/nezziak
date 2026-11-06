@@ -3635,3 +3635,62 @@ sendTradeOfferNow = async function() {
     lastTradeTimestamp = Date.now();
     await origSendTradeOfferNow();
 };
+// =====================================================
+// PRZESUWANIE CZATU GÓRA-DÓŁ + WERSJA GRY V1.0.0
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+(function initDraggableChatBox() {
+    let isDraggingChat = false;
+    let startMouseY = 0;
+    let startOffsetY = 0;
+    let currentChatOffsetY = 0;
+
+    // Automatycznie dodaj etykietę wersji gry w rogu ekranu
+    window.addEventListener("DOMContentLoaded", () => {
+        if (!document.getElementById("rsl-game-version-tag")) {
+            const badge = document.createElement("div");
+            badge.id = "rsl-game-version-tag";
+            badge.className = "game-version-badge";
+            badge.innerText = "RSL.IO v1.0.0";
+            document.body.appendChild(badge);
+        }
+    });
+
+    window.addEventListener("mousedown", (e) => {
+        const chatCard = e.target.closest(".chat-card-in-right");
+        if (!chatCard) return;
+
+        // Pozwól normalnie pisać i klikać w inputy/przyciski czatu
+        if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON" || e.target.closest(".chat-messages")) {
+            return;
+        }
+
+        const titleEl = e.target.closest(".card-title");
+        if (!titleEl) return;
+
+        isDraggingChat = true;
+        startMouseY = e.clientY;
+        startOffsetY = currentChatOffsetY;
+        e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) => {
+        if (!isDraggingChat) return;
+
+        const chatCard = document.querySelector(".chat-card-in-right");
+        if (!chatCard) return;
+
+        const deltaY = e.clientY - startMouseY;
+        currentChatOffsetY = startOffsetY + deltaY;
+
+        // Ograniczenia ruchu góra-dół, żeby czat nie uciekł z prawego panelu
+        currentChatOffsetY = Math.max(-120, Math.min(180, currentChatOffsetY));
+        chatCard.style.transform = `translateY(${currentChatOffsetY}px)`;
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (!isDraggingChat) return;
+        isDraggingChat = false;
+    });
+})();
