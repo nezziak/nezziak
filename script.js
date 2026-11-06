@@ -2405,3 +2405,389 @@ function casinoRoulette(col) {
         if (wrap) wrap.classList.remove("dragging-now");
     });
 })();
+
+// =====================================================
+// SYSTEM WYMIAN MIĘDZY GRACZAMI (TRADE) + TWARDA BLOKADA UPRAWNIEŃ HOSTA 👑
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+let activeTradeTargetId = null;
+let lastSeenTradeId = null;
+
+// 1. Automatyczne utworzenie okienek HTML dla wymian (nie trzeba edytować index.html!)
+function ensureTradeModalsInDOM() {
+    if (document.getElementById("trade-create-modal")) return;
+
+    const modalHTML = `
+        <!-- OKIENKO TWORZENIA OFERTY WYMIANY -->
+        <div id="trade-create-modal" class="trade-modal-backdrop hidden">
+            <div class="trade-modal-card">
+                <div class="trade-modal-header">
+                    <span>🤝 Zaproponuj wymianę z graczem: <strong id="trade-target-nick" style="color:#fde047;">---</strong></span>
+                    <button class="btn-dark-sm" onclick="closeTradeModal()">✖ Zamknij</button>
+                </div>
+
+                <div class="trade-columns">
+                    <!-- LEWA STRONA: CO JA DAJĘ -->
+                    <div class="trade-col">
+                        <div class="trade-col-title">
+                            <span>📤 Ty oddajesz:</span>
+                            <span style="color:#22c55e;">Masz: $<span id="trade-my-cash-max">0</span></span>
+                        </div>
+                        <label class="small-label">Gotówka dla gracza ($):</label>
+                        <input type="number" id="trade-offer-cash" class="trade-cash-input" value="0" min="0" step="10">
+                        <label class="small-label" style="margin-top:4px;">Twoje dzielnice (zaznacz):</label>
+                        <div id="trade-my-props-list" class="trade-props-box"></div>
+                    </div>
+
+                    <!-- PRAWA STRONA: CO CHCĘ W ZAMIAN -->
+                    <div class="trade-col">
+                        <div class="trade-col-title">
+                            <span>📥 Ty otrzymujesz:</span>
+                            <span style="color:#38bdf8;">Ma: $<span id="trade-their-cash-max">0</span></span>
+                        </div>
+                        <label class="small-label">Gotówka od gracza ($):</label>
+                        <input type="number" id="trade-request-cash" class="trade-cash-input" value="0" min="0" step="10">
+                        <label class="small-label" style="margin-top:4px;">Dzielnice gracza (zaznacz):</label>
+                        <div id="trade-their-props-list" class="trade-props-box"></div>
+                    </div>
+                </div>
+
+                <div class="trade-modal-footer">
+                    <button class="btn-dark" onclick="closeTradeModal()">Anuluj</button>
+                    <button class="btn-action-buy" onclick="sendTradeOfferNow()">🚀 Wyślij ofertę wymiany</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- OKIENKO ODBIORU OFERTY PRZEZ DRUGIEGO GRACZA -->
+        <div id="trade-incoming-modal" class="trade-modal-backdrop hidden">
+            <div class="incoming-trade-banner">
+                <h3 style="color:#fde047;">🤝 Nowa propozycja wymiany!</h3>
+                <div id="trade-incoming-title" style="font-size:13.5px;">Gracz proponuje Ci wymianę:</div>
+                <div id="trade-incoming-body" class="incoming-trade-details"></div>
+                <div class="main-turn-btns" style="margin-top:6px;">
+                    <button class="btn-action-buy" onclick="respondToTradeOffer(true)">✅ Akceptuj wymianę</button>
+                    <button class="btn-bankrupt" style="flex:0; padding:10px 18px;" onclick="respondToTradeOffer(false)">❌ Odrzuć</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+}
+
+// 2. Otwieranie okienka wymiany z wybranym graczem
+function openTradeModalWith(targetId) {
+    ensureTradeModalsInDOM();
+    if (!roomState || roomState.status !== "playing") {
+        alert("Wymiany są dostępne tylko w trakcie trwającej rozgrywki!");
+        return;
+    }
+    const me = roomState.players?.[myId];
+    const target = roomState.players?.[targetId];
+    if (!me || !target || me.bankrupt || target.bankrupt) return;
+
+    activeTradeTargetId = targetId;
+    document.getElementById("trade-target-nick").innerText = target.nick;
+    document.getElementById("trade-my-cash-max").innerText = me.cash;
+    document.getElementById("trade-their-cash-max").innerText = target.cash;
+
+    const myCashInp = document.getElementById("trade-offer-cash");
+    const theirCashInp = document.getElementById("trade-request-cash");
+    myCashInp.value = 0;
+    myCashInp.max = me.cash;
+    theirCashInp.value = 0;
+    theirCashInp.max = target.cash;
+
+    const boardData = getCurrentBoard();
+    const props = roomState.props || {};
+
+    // Moje dzielnice
+    const myPropsIndices = Object.keys(props).filter(idx => props[idx].owner === myId);
+    const myBox = document.getElementById("trade-my-props-list");
+    if (myPropsIndices.length === 0) {
+        myBox.innerHTML = `<div class="small-label">Brak własnych dzielnic.</div>`;
+    } else {
+        myBox.innerHTML = myPropsIndices.map(idx => {
+            const t = boardData[idx];
+            const h = props[idx].houses || 0;
+            return `
+                <label class="trade-prop-item">
+                    <input type="checkbox" class="trade-my-prop-cb" value="${idx}">
+                    <strong style="color:${t.color || '#38bdf8'}">■</strong>
+                    <span>${t.name} (${t.price}$) ${h > 0 ? '🏠x'+h : ''}</span>
+                </label>
+            `;
+        }).join("");
+    }
+
+    // Dzielnice drugiego gracza
+    const theirPropsIndices = Object.keys(props).filter(idx => props[idx].owner === targetId);
+    const theirBox = document.getElementById("trade-their-props-list");
+    if (theirPropsIndices.length === 0) {
+        theirBox.innerHTML = `<div class="small-label">Ten gracz nie ma jeszcze dzielnic.</div>`;
+    } else {
+        theirBox.innerHTML = theirPropsIndices.map(idx => {
+            const t = boardData[idx];
+            const h = props[idx].houses || 0;
+            return `
+                <label class="trade-prop-item">
+                    <input type="checkbox" class="trade-their-prop-cb" value="${idx}">
+                    <strong style="color:${t.color || '#38bdf8'}">■</strong>
+                    <span>${t.name} (${t.price}$) ${h > 0 ? '🏠x'+h : ''}</span>
+                </label>
+            `;
+        }).join("");
+    }
+
+    document.getElementById("trade-create-modal").classList.remove("hidden");
+}
+
+function closeTradeModal() {
+    document.getElementById("trade-create-modal")?.classList.add("hidden");
+    activeTradeTargetId = null;
+}
+
+// 3. Wysyłanie oferty wymiany (do żywego gracza lub Bota!)
+async function sendTradeOfferNow() {
+    if (!roomState || !activeTradeTargetId) return;
+    const me = roomState.players?.[myId];
+    const target = roomState.players?.[activeTradeTargetId];
+    if (!me || !target) return;
+
+    const offerCash = Math.max(0, parseInt(document.getElementById("trade-offer-cash").value) || 0);
+    const requestCash = Math.max(0, parseInt(document.getElementById("trade-request-cash").value) || 0);
+
+    if (offerCash > me.cash) {
+        alert("Nie masz tylu pieniędzy!");
+        return;
+    }
+    if (requestCash > target.cash) {
+        alert(`${target.nick} nie ma tylu pieniędzy!`);
+        return;
+    }
+
+    const offerProps = Array.from(document.querySelectorAll(".trade-my-prop-cb:checked")).map(cb => parseInt(cb.value));
+    const requestProps = Array.from(document.querySelectorAll(".trade-their-prop-cb:checked")).map(cb => parseInt(cb.value));
+
+    if (offerCash === 0 && requestCash === 0 && offerProps.length === 0 && requestProps.length === 0) {
+        alert("Wybierz chociaż jedno pole lub wpisz kwotę gotówki do wymiany!");
+        return;
+    }
+
+    const tradeObj = {
+        id: "tr_" + Date.now(),
+        fromId: myId,
+        fromNick: me.nick,
+        toId: target.id,
+        toNick: target.nick,
+        offerCash: offerCash,
+        requestCash: requestCash,
+        offerProps: offerProps,
+        requestProps: requestProps
+    };
+
+    closeTradeModal();
+
+    // Jeśli wymieniamy się z Botem -> Bot od razu ocenia opłacalność oferty!
+    if (target.isBot) {
+        const boardData = getCurrentBoard();
+        const givenValue = offerCash + offerProps.reduce((acc, idx) => acc + (boardData[idx]?.price || 100), 0);
+        const wantedValue = requestCash + requestProps.reduce((acc, idx) => acc + (boardData[idx]?.price || 100), 0);
+
+        // Bot zgadza się, jeśli wartość tego co dostaje wynosi min. 90% wartości tego co oddaje
+        if (givenValue >= wantedValue * 0.9) {
+            executeTradeTransfer(tradeObj);
+            addHistoryEntry(`🤝🤖 <strong>${target.nick}</strong> zaakceptował wymianę z graczem <strong>${me.nick}</strong>!`, target.color);
+            await pushState();
+            alert(`✅ ${target.nick} przyjął Twoją ofertę wymiany!`);
+        } else {
+            addHistoryEntry(`❌🤖 <strong>${target.nick}</strong> odrzucił nieopłacalną ofertę wymiany od <strong>${me.nick}</strong>.`, target.color);
+            await pushState();
+            alert(`❌ ${target.nick} odrzucił ofertę (uznał ją za nieopłacalną)!`);
+        }
+        return;
+    }
+
+    // Jeśli to żywy gracz -> zapisujemy ofertę w pokoju Firebase
+    roomState.pendingTrade = tradeObj;
+    addHistoryEntry(`🤝 <strong>${me.nick}</strong> wysłał propozycję wymiany do <strong>${target.nick}</strong>.`, me.color);
+    await pushState();
+}
+
+// 4. Przekazanie pól i gotówki po akceptacji
+function executeTradeTransfer(tr) {
+    const pFrom = roomState.players?.[tr.fromId];
+    const pTo = roomState.players?.[tr.toId];
+    if (!pFrom || !pTo) return false;
+    if (pFrom.cash < tr.offerCash || pTo.cash < tr.requestCash) return false;
+
+    const props = roomState.props || {};
+    // Sprawdź, czy obaj gracze nadal posiadają oferowane pola
+    for (const idx of (tr.offerProps || [])) {
+        if (!props[idx] || props[idx].owner !== tr.fromId) return false;
+    }
+    for (const idx of (tr.requestProps || [])) {
+        if (!props[idx] || props[idx].owner !== tr.toId) return false;
+    }
+
+    // Przelew gotówki
+    pFrom.cash = (Number(pFrom.cash) || 0) - tr.offerCash + tr.requestCash;
+    pTo.cash = (Number(pTo.cash) || 0) - tr.requestCash + tr.offerCash;
+
+    // Przepisanie własności działek
+    (tr.offerProps || []).forEach(idx => {
+        props[idx].owner = tr.toId;
+    });
+    (tr.requestProps || []).forEach(idx => {
+        props[idx].owner = tr.fromId;
+    });
+
+    return true;
+}
+
+// 5. Odpowiedź drugiego gracza (Akceptuj / Odrzuć)
+async function respondToTradeOffer(accepted) {
+    if (!roomState || !roomState.pendingTrade) return;
+    const tr = roomState.pendingTrade;
+
+    if (accepted) {
+        const ok = executeTradeTransfer(tr);
+        if (ok) {
+            addHistoryEntry(`✅🤝 <strong>${tr.toNick}</strong> zaakceptował wymianę z graczem <strong>${tr.fromNick}</strong>!`, "#22c55e");
+        } else {
+            addHistoryEntry(`⚠️ Wymiana między ${tr.fromNick} a ${tr.toNick} nie powiodła się (brak środków lub działek).`, "#ef4444");
+        }
+    } else {
+        addHistoryEntry(`❌🤝 <strong>${tr.toNick}</strong> odrzucił propozycję wymiany od <strong>${tr.fromNick}</strong>.`, "#ef4444");
+    }
+
+    roomState.pendingTrade = null;
+    document.getElementById("trade-incoming-modal")?.classList.add("hidden");
+    await pushState();
+}
+
+// 6. Twarda blokada zmiany ustawień i startu gry TYLKO dla Hosta 👑
+const origUpdateSettingsHostCheck = updateSettingsFromUI;
+updateSettingsFromUI = async function() {
+    if (!roomState) return;
+    if (!isMeRoomHost()) {
+        alert("👑 Tylko Host pokoju może zmieniać ustawienia i zasady gry!");
+        applySettingsToDOM(roomState.settings);
+        return;
+    }
+    await origUpdateSettingsHostCheck();
+};
+
+const origHostStartCheck = hostStartGame;
+hostStartGame = async function() {
+    if (!roomState) return;
+    if (!isMeRoomHost()) {
+        alert("👑 Tylko Host pokoju może wystartować rozgrywkę!");
+        return;
+    }
+    await origHostStartCheck();
+};
+
+const origAddBotHostCheck = addBotPlayer;
+addBotPlayer = async function() {
+    if (!roomState) return;
+    if (!isMeRoomHost()) {
+        alert("👑 Tylko Host pokoju może dodawać Boty!");
+        return;
+    }
+    await origAddBotHostCheck();
+};
+
+// 7. Rozszerzenie głównego odświeżania o przyciski Wymiany (🤝) i blokady dla gości
+const prevRenderBeforeTradeAndHost = renderRichupScreen;
+renderRichupScreen = function() {
+    ensureTradeModalsInDOM();
+    prevRenderBeforeTradeAndHost();
+    if (!roomState) return;
+
+    const amIHost = isMeRoomHost();
+    const isPlaying = roomState.status === "playing";
+    const allPlayers = getOrderedPlayers();
+    const boardData = getCurrentBoard();
+
+    // A. Blokada wszystkich ustawień po prawej i widoczności pokoju dla osób niebędących Hostem
+    const lockBanner = document.getElementById("settings-lock-info");
+    if (lockBanner) {
+        if (!amIHost) {
+            lockBanner.classList.remove("hidden");
+            lockBanner.innerText = "👑 Tylko Host pokoju może zmieniać ustawienia gry.";
+        } else if (isPlaying) {
+            lockBanner.classList.remove("hidden");
+            lockBanner.innerText = "🔒 Gra trwa! Kliknij 'Reset do Ustawień' powyżej.";
+        } else {
+            lockBanner.classList.add("hidden");
+        }
+    }
+
+    const disableControls = isPlaying || !amIHost;
+    document.querySelectorAll("#settings-panel-right select, #settings-panel-right input, #room-visibility").forEach(el => {
+        el.disabled = disableControls;
+    });
+
+    // Ukryj przycisk Resetu do Ustawień oraz Startu Gry dla nie-Hosta
+    const resetBtn = document.getElementById("btn-reset-lobby");
+    if (resetBtn) resetBtn.classList.toggle("hidden", !amIHost);
+
+    const startBtn = document.querySelector(".btn-richup-start");
+    if (startBtn) {
+        startBtn.disabled = !amIHost;
+        startBtn.style.opacity = amIHost ? "1" : "0.5";
+        startBtn.innerText = amIHost ? "▶️ Rozpocznij Grę" : "⏳ Czekaj aż Host rozpocznie grę...";
+    }
+
+    // B. Lista graczy z przyciskiem 🤝 Wymiany (w trakcie gry) oraz 🥾 Kick (tylko dla Hosta)
+    const monoList = document.getElementById("players-list-right");
+    if (monoList) {
+        monoList.innerHTML = allPlayers.map(p => {
+            const canTradeWith = isPlaying && p.id !== myId && !p.bankrupt && !roomState.players?.[myId]?.bankrupt;
+            return `
+                <div class="p-row" style="opacity:${p.bankrupt ? 0.4 : 1}">
+                    <div class="p-left">
+                        <div class="p-dot" style="background:${p.color}"></div>
+                        <strong>${p.nick}</strong>
+                        ${p.id === roomState.hostId ? `<span class="host-crown">👑 Host</span>` : ``}
+                        ${p.bankrupt ? `<span style="color:#ef4444;font-size:11px;">BANKRUT</span>` : ``}
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <strong>$${p.cash}</strong>
+                        ${canTradeWith ? `<button class="btn-trade-mini" onclick="openTradeModalWith('${p.id}')" title="Zaproponuj wymianę">🤝</button>` : ``}
+                        ${amIHost && p.id !== myId ? `<button class="btn-kick" onclick="hostKickPlayer('${p.id}')" title="Wyrzuć z gry (Tylko Host)">🥾</button>` : ``}
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    // C. Sprawdź, czy przyszła do mnie oferta wymiany od innego gracza
+    const incomingModal = document.getElementById("trade-incoming-modal");
+    const tr = roomState.pendingTrade;
+    if (incomingModal) {
+        if (tr && tr.toId === myId) {
+            const offerPropsNames = (tr.offerProps || []).map(i => `• ${boardData[i]?.name}`).join("<br>") || "Brak działek";
+            const reqPropsNames = (tr.requestProps || []).map(i => `• ${boardData[i]?.name}`).join("<br>") || "Brak działek";
+
+            document.getElementById("trade-incoming-title").innerHTML = `Gracz <strong style="color:#fde047;">${tr.fromNick}</strong> proponuje Ci wymianę:`;
+            document.getElementById("trade-incoming-body").innerHTML = `
+                <div>
+                    <strong style="color:#22c55e;">📥 Otrzymasz od ${tr.fromNick}:</strong><br>
+                    💵 Gotówka: <strong>$${tr.offerCash || 0}</strong><br>
+                    ${offerPropsNames}
+                </div>
+                <div>
+                    <strong style="color:#ef4444;">📤 Oddasz w zamian:</strong><br>
+                    💵 Gotówka: <strong>$${tr.requestCash || 0}</strong><br>
+                    ${reqPropsNames}
+                </div>
+            `;
+            incomingModal.classList.remove("hidden");
+        } else {
+            incomingModal.classList.add("hidden");
+        }
+    }
+};
