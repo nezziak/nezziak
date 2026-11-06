@@ -3606,3 +3606,32 @@ runBotTurn = async function(botObj) {
 
     await prevRunBotTurnBeforeDebt(botObj);
 };
+// =====================================================
+// 10-SEKUNDOWY DELAY (COOLDOWN) MIĘDZY WYMIANAMI
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+let lastTradeTimestamp = 0;
+const TRADE_COOLDOWN_MS = 10000; // 10 sekund
+
+// Nadpisujemy funkcję otwierania wymiany, żeby sprawdzać upływ czasu
+const origOpenTradeModalWith = openTradeModalWith;
+openTradeModalWith = function(targetId) {
+    const now = Date.now();
+    const elapsed = now - lastTradeTimestamp;
+
+    if (elapsed < TRADE_COOLDOWN_MS) {
+        const remainingSec = Math.ceil((TRADE_COOLDOWN_MS - elapsed) / 1000);
+        alert(`⏳ Musisz odczekać jeszcze ${remainingSec} sek., zanim wyślesz kolejną propozycję wymiany!`);
+        return;
+    }
+
+    origOpenTradeModalWith(targetId);
+};
+
+// Nadpisujemy wysyłanie oferty, żeby zapisać dokładny moment wysłania
+const origSendTradeOfferNow = sendTradeOfferNow;
+sendTradeOfferNow = async function() {
+    lastTradeTimestamp = Date.now();
+    await origSendTradeOfferNow();
+};
