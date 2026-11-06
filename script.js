@@ -3497,3 +3497,112 @@ renderMyOwnedProps = function(boardData, currP) {
         `;
     }).join("");
 };
+// =====================================================
+// KASA NA MINUS + RĘCZNE BANKRUCTWO (BRAK AUTOMATU)
+// Wklej na sam dół pliku script.js!
+// =====================================================
+
+// 1. Nadpisujemy funkcję sprawdzenia kasy po lądowaniu na polu – dopuszczamy minusy!
+const prevProcessLandingBeforeDebt = processLanding;
+processLanding = function(player, tile, posIdx, boardData) {
+    const res = prevProcessLandingBeforeDebt(player, tile, posIdx, boardData);
+    
+    // Jeśli stan konta spadł poniżej 0, wyliczamy ile brakuje i NIE wyrzucamy z gry automatycznie
+    if (player.cash < 0) {
+        const debt = Math.abs(player.cash);
+        addHistoryEntry(`⚠️ <strong>${player.nick}</strong> wpada w długi! Stan konta: <span style="color:#ef4444;">$${player.cash}</span> (Brakuje Ci <strong>$${debt}</strong>, żeby wyjść na zero. Sprzedaj domki lub pole!).`, "#ef4444");
+        broadcastToast("⚠️ Poważny dług!", `${player.nick} ma na koncie $${player.cash}! Brakuje $${debt} do spłaty długów.`, "⚠️", "#ef4444");
+    }
+    
+    return res;
+};
+
+// 2. Blokujemy automatyczne usuwanie gracza z gry przy ujemnym saldo w funkcji rzutu i ruchu bota
+rollDiceNow = async function() {
+    if (!roomState || roomState.status !== "playing") return;
+    const activePlayers = getActivePlayers();
+    if (activePlayers.length === 0) return;
+
+    const currIdx = roomState.turnIdx % activePlayers.length;
+    const currP = activePlayers[currIdx];
+
+    if (!currP || currP.id !== myId) {
+        alert("To nie Twoja tura!");
+        return;
+    }
+    if (roomState.rolledThisTurn) {
+        alert("W tej turze już rzuciłeś kostką!");
+        return;
+    }
+
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    const sum = d1 + d2;
+
+    roomState.dice = [d1, d2];
+    roomState.diceRollId = Date.now();
+    lastSeenDiceRollId = roomState.diceRollId;
+    roomState.rolledThisTurn = true;
+    roomState.housesThisTurn = 0;
+
+    triggerDiceSpinAnimation(d1, d2);
+
+    const boardData = getCurrentBoard();
+    const playerObj = roomState.players[myId];
+    const oldPos = Number(playerObj.pos) || 0;
+    const newPos = (oldPos + sum) % boardData.length;
+    playerObj.pos = newPos;
+
+    let passMsg = "";
+    if (newPos < oldPos) {
+        playerObj.cash += 200;
+        passMsg = " (Mija START +200$)";
+    }
+
+    const tile = boardData[newPos];
+    const landResult = processLanding(playerObj, tile, newPos, boardData);
+
+    addHistoryEntry(
+        `🎲 <strong>${playerObj.nick}</strong> wyrzuca <strong>${sum}</strong> (${d1}+${d2})${passMsg} ➡️ staje na <strong>${tile.name}</strong>. ${landResult}`,
+        playerObj.color
+    );
+
+    // USUNIĘTE: warunek sprawdzający `if (playerObj.cash < 0) { declareBankrupt(...); }`
+    // Od teraz kasa może być ujemna, a gracz sam decyduje kiedy się podda!
+
+    await pushState();
+};
+
+// 3. Boty w długach automatycznie wyprzedają domki albo ogłaszają bankructwo, jeśli nie mają wyjścia
+const prevRunBotTurnBeforeDebt = runBotTurn;
+runBotTurn = async function(botObj) {
+    if (!roomState || roomState.status !== "playing") return;
+    const bot = roomState.players?.[botObj.id];
+    
+    // Jeśli bot ma długi, najpierw próbuje ratować się sprzedażą domków
+    if (bot && bot.cash < 0) {
+        const props = roomState.props || {};
+        const botProps = Object.keys(props).filter(k => props[k].owner === bot.id);
+        
+        let soldSomething = false;
+        for (const pKey of botProps) {
+            if (props[pKey].houses > 0) {
+                props[pKey].houses -= 1;
+                const boardData = getCurrentBoard();
+                const refund = Math.floor((boardData[pKey]?.house || 50) / 2);
+                bot.cash += refund;
+                soldSomething = true;
+                addHistoryEntry(`🤖 ${bot.nick} ratuje się przed długiem i sprzedaje domek z ${boardData[pKey].name} (+${refund}$).`, bot.color);
+                break;
+            }
+        }
+
+        // Jeśli nie ma już nic do sprzedaży, a dług nadal rośnie poniżej -$300 -> bot ogłasza bankructwo
+        if (!soldSomething && bot.cash < -300) {
+            await declareBankrupt(bot.id);
+            return;
+        }
+    }
+
+    await prevRunBotTurnBeforeDebt(botObj);
+};
